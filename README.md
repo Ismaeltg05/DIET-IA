@@ -6,12 +6,12 @@
 ## 1. Definición del Problema y Objetivos
 
 ### 1.1 Descripción del Problema
-En el contexto de las *Smart Cities*, la gestión ineficiente de flotas de transporte urbano genera un aumento de emisiones de CO2, congestión de tráfico y pérdidas económicas significativas debid[...]
+En el contexto de las *Smart Cities*, la gestión ineficiente de flotas de transporte urbano genera un aumento de emisiones de CO2, congestión de tráfico y pérdidas económicas significativas debido a taxis que circulan vacíos buscando clientes sin rumbo fijo.
 
-Actualmente, los sistemas tradicionales carecen de herramientas predictivas y de interfaces amigables para el conductor. **El problema central** a resolver es la incapacidad de anticipar la demanda en[...]
+Actualmente, los sistemas tradicionales carecen de herramientas predictivas y de interfaces amigables para el conductor. **El problema central** a resolver es la incapacidad de anticipar la demanda en tiempo real y comunicarla eficazmente a la flota. Este proyecto propone un sistema capaz de predecir zonas de alta demanda y visualizarlas en una aplicación web interactiva para los conductores.
 
 ### 1.2 Objetivos Generales
-Desarrollar un sistema integral "Smart Taxi" que procese flujos de datos geoespaciales (GPS) y meteorológicos en tiempo real para optimizar la operativa de la flota, utilizando técnicas de Big Data,[...]
+Desarrollar un sistema integral "Smart Taxi" que procese flujos de datos geoespaciales (GPS) y meteorológicos en tiempo real para optimizar la operativa de la flota, utilizando técnicas de Big Data, Inteligencia Artificial, desarrollo Web y automatización.
 
 ### 1.3 Objetivos Específicos
 1.  **Ingesta y Procesamiento Masivo:** Implementar una arquitectura capaz de procesar miles de registros por minuto (simulación IoT) mediante ingestión continua.
@@ -43,15 +43,15 @@ La solución cubre todas las capas tecnológicas, desde el dato crudo hasta la i
 
 ### 3.1 Ingesta y Streaming
 * **Tecnología:** **Apache Kafka**.
-* **Función:** Buffer de entrada para recibir miles de datos GPS por segundo desde el simulador Python y enviarlos al sistema de procesamiento.
+* **Función:** Buffer de entrada para recibir miles de datos GPS por segundo desde el simulador Python y enviarlos al sistema de procesamiento sin pérdida de información.
 
 ### 3.2 Almacenamiento (Persistencia Políglota)
-* **HDFS (Hadoop):** Almacenamiento "frío" para logs históricos masivos.
+* **HDFS (Hadoop):** Almacenamiento "frío" para logs históricos masivos (Data Lake).
 * **MongoDB (NoSQL):** Almacenamiento "caliente". Base de datos operacional para guardar los resultados procesados y servir datos a la Web App.
 
 ### 3.3 Procesamiento y Análisis
 * **Tecnología:** **Apache Spark (PySpark)**.
-* **Tareas:** Limpieza de coordenadas, cálculo de velocidad media y agregación de ventanas de tiempo para el modelo.
+* **Tareas:** Limpieza de coordenadas, cálculo de velocidad media por calle y agregación de ventanas de tiempo para alimentar el modelo de IA.
 
 ### 3.4 Inteligencia Artificial (Backend IA)
 * **Modelo:** Regresión/Clustering con **Scikit-learn** o **Spark MLlib**.
@@ -79,50 +79,29 @@ Se desarrollará una **Single Page Application (SPA)** para la interacción fina
 El flujo de datos completo, desde el sensor hasta la pantalla del usuario:
 
 ```mermaid
-flowchart LR
-  %% Fuentes
-  subgraph Fuentes [Fuentes de datos]
-    direction TB
-    SIM[Simulador Python GPS<br/>(JSON Stream)]
-    CLIM[APIs Clima<br/>(OpenWeatherMap / AEMET)]
-    SIM -->|Stream JSON| KAF[Kakfa]
-    CLIM -->|Enriquecimiento| ENR[Servicio de Enriquecimiento]
-    ENR -->|Push / Pull| KAF
-  end
+graph LR
+    subgraph Fuentes
+        A["Simulador Python GPS"] -->|"JSON Stream"| B("Apache Kafka")
+        W["API Clima"] -.->|"Enriquecimiento"| C
+    end
 
-  %% Procesamiento y ML
-  subgraph Procesamiento [Big Data & IA]
-    direction TB
-    KAF --> SPK[Apache Spark (PySpark)]
-    SPK -->|ETL / Limpieza / Agregación| SPK_PROC[Procesamiento (ventanas, features)]
-    SPK_PROC --> ML[Modelo ML<br/>(Entrenamiento / Inferencia)]
-  end
+    subgraph BigDataIA ["Big Data & IA"]
+        B -->|"Ingesta"| C{"Apache Spark"}
+        C -->|"ETL & Limpieza"| C
+        C -->|"Modelo ML"| C
+    end
 
-  %% Persistencia
-  subgraph Persistencia [Persistencia]
-    direction TB
-    SPK_PROC -->|Raw data| HDFS[(HDFS - Data Lake)]
-    SPK_PROC -->|Processed data / Features| MDB[(MongoDB - Operacional)]
-    ML -->|Model results / Scores| MDB
-  end
+    subgraph Persistencia
+        C -->|"Raw Data"| D[("HDFS")]
+        C -->|"Datos Procesados"| E[("MongoDB")]
+    end
 
-  %% Backend API
-  subgraph Backend [API Backend]
-    direction TB
-    MDB --> API[API REST - FastAPI<br/>(/api/predict/demand)]
-    ML -->|Modelo desplegado / artefactos| API
-  end
+    subgraph BackendAPI ["Backend API"]
+        E -->|"Query"| F["API REST (FastAPI)"]
+    end
 
-  %% Consumidores / Frontend
-  subgraph Consumidores [Frontend y Explotación]
-    direction TB
-    API --> WEB[Web App (React + Leaflet)]
-    API --> PBI[Power BI Dashboards]
-    API --> N8N[n8n - Orquestador de alertas]
-    N8N -->|Alertas| TLG[Telegram / SMS]
-  end
-
-  %% Alineación visual
-  classDef cluster fill:#f9f9f9,stroke:#ddd,stroke-width:1px;
-  class Fuentes,Procesamiento,Persistencia,Backend,Consumidores cluster;
-```
+    subgraph Frontend ["Frontend & Explotación"]
+        F -->|"JSON"| G["Web App (React + Leaflet)"]
+        F -->|"JSON"| H["Power BI Dashboard"]
+        F -->|"Trigger"| I["n8n Alertas"]
+    end
