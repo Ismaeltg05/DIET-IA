@@ -8,16 +8,16 @@
 ### 1.1 Descripción del Problema
 En el contexto de las *Smart Cities*, la gestión ineficiente de flotas de transporte urbano genera un aumento de emisiones de CO2, congestión de tráfico y pérdidas económicas significativas debido a taxis que circulan vacíos buscando clientes sin rumbo fijo.
 
-Actualmente, los sistemas tradicionales carecen de herramientas predictivas. **El problema central** a resolver es la incapacidad de anticipar la demanda en tiempo real. Este proyecto propone un sistema capaz de predecir en qué zonas de la ciudad habrá alta demanda en los próximos **30 minutos**, dirigiendo a los taxis hacia allí antes de que se genere la cola de espera.
+Actualmente, los sistemas tradicionales carecen de herramientas predictivas y de interfaces amigables para el conductor. **El problema central** a resolver es la incapacidad de anticipar la demanda en tiempo real y comunicarla eficazmente a la flota. Este proyecto propone un sistema capaz de predecir zonas de alta demanda y visualizarlas en una aplicación web interactiva para los conductores.
 
 ### 1.2 Objetivos Generales
-Desarrollar un sistema integral "Smart Taxi" que procese flujos de datos geoespaciales (GPS) y meteorológicos en tiempo real para optimizar la operativa de la flota, utilizando técnicas de Big Data, Inteligencia Artificial y automatización de procesos.
+Desarrollar un sistema integral "Smart Taxi" que procese flujos de datos geoespaciales (GPS) y meteorológicos en tiempo real para optimizar la operativa de la flota, utilizando técnicas de Big Data, Inteligencia Artificial, desarrollo Web y automatización.
 
 ### 1.3 Objetivos Específicos
-1.  **Ingesta y Procesamiento Masivo (Big Data):** Implementar una arquitectura capaz de procesar miles de registros por minuto (simulación IoT) mediante ingestión continua.
-2.  **Predicción de Demanda (IA):** Entrenar y desplegar un Modelo de Regresión (Machine Learning) que cruce variables temporales y climáticas para estimar la probabilidad de clientes por zona.
-3.  **Almacenamiento Híbrido (Cloud/NoSQL):** Gestionar grandes volúmenes de datos históricos (Data Lake) y utilizar bases de datos NoSQL para la operativa ágil.
-4.  **Automatización y Visualización:** Crear mapas de calor en tiempo real y configurar alertas automáticas a conductores cuando se detecten picos de demanda.
+1.  **Ingesta y Procesamiento Masivo:** Implementar una arquitectura capaz de procesar miles de registros por minuto (simulación IoT) mediante ingestión continua.
+2.  **Predicción de Demanda (IA):** Entrenar un modelo de Regresión que cruce variables temporales y climáticas para estimar la probabilidad de clientes por zona.
+3.  **Desarrollo Full Stack (Web App):** Crear una interfaz web interactiva (Frontend) que consuma una API propia para guiar a los conductores mediante mapas en tiempo real.
+4.  **Almacenamiento Híbrido:** Gestionar datos históricos en HDFS (Data Lake) y datos operacionales en MongoDB.
 
 ---
 
@@ -33,52 +33,50 @@ Se desarrollará un script en Python (generador de logs sintéticos) que simula 
 
 ### B. Datos Meteorológicos (APIs Públicas)
 Integración con APIs externas (ej. **OpenWeatherMap** o **AEMET**) para enriquecer el modelo.
-* **Justificación:** La lluvia o el frío extremo son factores determinantes en el aumento de la demanda de taxis.
-* **Datos extraídos:** `Temperatura`, `Precipitación`, `Humedad`.
+* **Variables:** `Temperatura`, `Precipitación`, `Humedad`.
 
 ---
 
 ## 3. Arquitectura Técnica Detallada
 
-La solución sigue un enfoque de procesamiento distribuido para manejar la velocidad y volumen del dato, cubriendo todas las capas tecnológicas del curso:
+La solución cubre todas las capas tecnológicas, desde el dato crudo hasta la interfaz de usuario:
 
 ### 3.1 Ingesta y Streaming
-* **Tecnología:** **Apache Kafka** o **Apache Flume**.
-* **Función:** Actúan como *buffer* de entrada para recibir miles de datos GPS por segundo desde el simulador Python y enviarlos al sistema sin pérdida de información.
+* **Tecnología:** **Apache Kafka**.
+* **Función:** Buffer de entrada para recibir miles de datos GPS por segundo desde el simulador Python y enviarlos al sistema de procesamiento.
 
 ### 3.2 Almacenamiento (Persistencia Políglota)
-* **HDFS (Hadoop):** Almacenamiento "frío". Aquí se guardan los datos crudos (logs históricos de meses) para futuros reentrenamientos del modelo.
-* **MongoDB (NoSQL):** Almacenamiento "caliente". Base de datos operacional para guardar la información de "Viajes Finalizados" (`Cliente`, `Tarifa`, `Origen`, `Destino`).
-    * *Cumplimiento:* Satisface el requisito de base de datos documental para datos semiestructurados.
-    * *Despliegue:* Preferiblemente en **AWS/Cloud** para justificar arquitecturas en la nube.
+* **HDFS (Hadoop):** Almacenamiento "frío" para logs históricos masivos.
+* **MongoDB (NoSQL):** Almacenamiento "caliente". Base de datos operacional para guardar los resultados procesados y servir datos a la Web App.
 
 ### 3.3 Procesamiento y Análisis
 * **Tecnología:** **Apache Spark (PySpark)**.
-* **Tareas:**
-    * Limpieza de coordenadas erróneas o nulas.
-    * Cálculo de velocidad media por calle para detectar congestión.
-    * Agregación de datos (ej. *"Recuento de viajes iniciados en Zona Centro entre las 18:00 y 19:00"*).
+* **Tareas:** Limpieza de coordenadas, cálculo de velocidad media y agregación de ventanas de tiempo para el modelo.
 
-### 3.4 Inteligencia Artificial (El cerebro del sistema)
-* **Desarrollo del Modelo:** Uso de **Scikit-learn** o **Spark MLlib**.
-    * *Tipo:* Modelo de Regresión.
-    * *Input:* Hora, Día de la semana, Clima, Eventos locales.
-    * *Output:* Predicción numérica de demanda por distrito.
-* **Despliegue (Inferencia):** El modelo se expone a través de una API REST en Python (**FastAPI** o **Flask**).
-    * *Caso de uso:* La app del taxista consulta la API y recibe: *"Vete a la zona Centro, probabilidad de cliente: Alta"*.
+### 3.4 Inteligencia Artificial (Backend IA)
+* **Modelo:** Regresión/Clustering con **Scikit-learn** o **Spark MLlib**.
+* **API de Inferencia:** Se encapsulará el modelo en una **API REST con FastAPI (Python)**.
+    * *Endpoint:* `/api/predict/demand`.
+    * *Función:* Recibe coordenadas y hora -> Devuelve probabilidad de demanda (0-100%).
 
-### 3.5 Visualización y Automatización (Explotación)
-* **Dashboard:** Uso de **Power BI** o **Grafana** conectado a MongoDB.
-    * Visualización de Mapas de Calor (Heatmaps) de zonas con alta demanda.
-    * Gráficos de ingresos por franja horaria.
-* **Automatización con n8n:**
-    * *Flujo:* Si la predicción de demanda en una zona supera el **90%** y hay pocos taxis libres allí → **n8n** envía una alerta automática a un canal de Telegram de los conductores o un email al gestor de flota.
+### 3.5 Frontend y Experiencia de Usuario (Web App)
+Se desarrollará una **Single Page Application (SPA)** para la interacción final:
+* **Tecnología:** **React.js** (o Vue.js) + **Vite**.
+* **Mapas:** Librería **Leaflet.js** (OpenStreetMap) para visualizar la flota y las zonas calientes.
+* **Estilos:** **Tailwind CSS** para diseño responsivo (Mobile First).
+* **Funcionalidad:**
+    * *Vista Conductor:* Mapa con su ubicación y marcadores rojos en zonas de alta probabilidad de clientes.
+    * *Vista Control:* Panel general con la ubicación de toda la flota.
+
+### 3.6 Analítica de Negocio y Automatización
+* **Power BI:** Conectado a MongoDB para dashboards estratégicos (ingresos mensuales, KPIs históricos).
+* **n8n:** Orquestador de alertas. Si la demanda > 90% en una zona vacía, envía notificación a Telegram.
 
 ---
 
 ## 4. Diagrama de Arquitectura
 
-El siguiente diagrama ilustra el flujo de datos desde la generación hasta la explotación final:
+El flujo de datos completo, desde el sensor hasta la pantalla del usuario:
 
 ```mermaid
 graph LR
@@ -98,8 +96,12 @@ graph LR
     C -->|Datos Procesados| E[(MongoDB)]
     end
 
-    subgraph Explotación
-    E -->|API Rest| F[Backend Python/FastAPI]
-    F --> G[Power BI Dashboard]
-    F --> H[n8n Automatización]
+    subgraph Backend API
+    E -->|Query| F[API REST (FastAPI)]
+    end
+
+    subgraph Frontend & Explotación
+    F -->|JSON| G[Web App (React + Leaflet)]
+    F -->|JSON| H[Power BI Dashboard]
+    F -->|Trigger| I[n8n Alertas]
     end
