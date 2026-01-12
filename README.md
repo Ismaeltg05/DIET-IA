@@ -54,7 +54,7 @@ El proyecto desarrollará un Producto Mínimo Viable que cubra:
 ### 3.3 Exclusiones y Limitaciones
 * No se utilizará hardware real (sensores OBD/GPS) ni vehículos físicos; se usarán datos sintéticos.
 * No se desarrollará la App de pasajero (usuario final), solo la del conductor/gestor.
-* No se incluye pasarela de pagos ni navegación "turn-by-turn" (tipo Google Maps).
+* No se incluye pasarela de pagos ni navegación "turn-by-turn".
 
 ---
 
@@ -67,7 +67,7 @@ Script en Python (generador de logs sintéticos) que simula el comportamiento de
 * **Velocidad:** Streaming continuo simulando tiempo real.
 
 ### B. Datos Meteorológicos (APIs Públicas)
-Integración con APIs externas (ej. **OpenWeatherMap** o **AEMET**).
+Integración con APIs externas (ej. **OpenWeatherMap** o **AEMET**) para enriquecer el modelo.
 * **Justificación:** La lluvia o temperatura extrema afectan directamente a la demanda.
 * **Variables:** `Temperatura`, `Precipitación`, `Humedad`.
 
@@ -139,3 +139,78 @@ graph LR
         F -->|"JSON"| H["Power BI Dashboard"]
         F -->|"Trigger"| I["n8n Alertas"]
     end
+'''
+
+---
+
+# 7. Planificación y Fases de Desarrollo
+
+Para garantizar el éxito del proyecto, el desarrollo se divide en **5 fases incrementales**, asegurando entregables funcionales en cada etapa.
+
+---
+
+## Fase 1: Infraestructura y Datos (Semanas 1-3)
+**Objetivo:** Tener el entorno listo y los datos fluyendo.
+
+* **Configuración de entorno:** Repositorio Git y `docker-compose` (Zookeeper, Kafka, Mongo, HDFS).
+* **Simulación IoT:** Desarrollo del script Python (IoT Mock) para generar coordenadas aleatorias realistas.
+* **Ingesta:** Creación del Topic Kafka y conexión del Producer.
+
+## Fase 2: Procesamiento Big Data (Semanas 4-6)
+**Objetivo:** Capturar los datos, limpiarlos y guardarlos.
+
+* **Streaming:** Configuración de Spark Streaming para leer de Kafka.
+* **Data Lake:** Guardado de histórico en HDFS (formato Parquet).
+* **Pipeline ETL:** Limpieza y guardado de "Estado Actual" en MongoDB.
+
+## Fase 3: Inteligencia Artificial (Semanas 7-9)
+**Objetivo:** Darle capacidad predictiva al sistema.
+
+* **Análisis:** Análisis Exploratorio (EDA) en Jupyter Notebooks.
+* **Entrenamiento:** Modelo de Regresión con Scikit-learn/SparkML.
+* **Despliegue de Modelo:** Serialización del modelo (`.pkl`) y pruebas de precisión.
+
+## Fase 4: Desarrollo Full Stack (Semanas 10-12)
+**Objetivo:** Hacer el sistema utilizable mediante la Web App.
+
+* **Backend:** Crear API con FastAPI que cargue el modelo y exponga endpoints.
+* **Frontend:** Configurar React + Vite e integrar Leaflet (Mapas).
+* **Integración:** Conectar Frontend con API para visualizar marcadores y zonas de calor.
+
+## Fase 5: Automatización y Cierre (Semanas 13-14)
+**Objetivo:** Pulir el producto final.
+
+* **Alertas:** Configurar n8n para alertas automáticas (Telegram).
+* **Business Intelligence:** Crear Dashboard de KPIs en Power BI.
+* **Documentación:** Redacción de memoria técnica y defensa.
+
+---
+
+## Cronograma del Proyecto (Gantt)
+
+```mermaid
+gantt
+    title Cronograma - Smart Taxi (14 Semanas)
+    dateFormat  YYYY-MM-DD
+    axisFormat  Sem %W
+    
+    section Infraestructura
+    Docker & Git                     :done,    d1, 2024-02-01, 7d
+    Simulador Python                 :active,  d2, after d1, 7d
+    Kafka & Ingesta                  :         d3, after d2, 7d
+
+    section Big Data & ETL
+    Spark & HDFS                     :         d4, after d3, 7d
+    Pipeline ETL (Kafka->Mongo)      :         d5, after d4, 14d
+
+    section IA & Modelo
+    Análisis & Jupyter               :         d6, after d5, 7d
+    Entrenamiento & API              :         d7, after d6, 14d
+
+    section Web App
+    Backend FastAPI                  :         d8, after d6, 10d
+    Frontend React                   :         d9, after d8, 14d
+
+    section Cierre
+    Automatización & BI              :         d10, after d9, 7d
+    Memoria & Defensa                :         d11, after d10, 7d
