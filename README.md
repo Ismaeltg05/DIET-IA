@@ -139,7 +139,7 @@ graph LR
         F -->|"JSON"| H["Power BI Dashboard"]
         F -->|"Trigger"| I["n8n Alertas"]
     end
-'''
+```
 
 ---
 
