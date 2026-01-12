@@ -189,17 +189,17 @@ Para garantizar el éxito del proyecto, el desarrollo se divide en **5 fases inc
 ## Cronograma del Proyecto (Gantt)
 
 ```mermaid
-%%{init: {'themeVariables': { 'taskTextDoneColor': '#000000' }}}%%
 gantt
     title Cronograma - Smart Taxi (14 Semanas)
     dateFormat  YYYY-MM-DD
-    axisFormat  %d/%m
+    axisFormat  Sem %W
     
     section Infraestructura
-    Docker & Git                     :done,    d1, 2024-02-01, 7d
+    Docker & Git                     :done,    d1, 2024-01-01, 7d
     Simulador Python                 :active,  d2, after d1, 7d
     Kafka & Ingesta                  :         d3, after d2, 7d
-
+    
+    %% ... resto del código igual ...
     section Big Data & ETL
     Spark & HDFS                     :         d4, after d3, 7d
     Pipeline ETL (Kafka->Mongo)      :         d5, after d4, 14d
