@@ -192,7 +192,7 @@ Para garantizar el éxito del proyecto, el desarrollo se divide en **5 fases inc
 gantt
     title Cronograma - Smart Taxi (14 Semanas)
     dateFormat  YYYY-MM-DD
-    axisFormat  Sem %W
+    axisFormat  %d/%m  
     
     section Infraestructura
     Docker & Git                     :done,    d1, 2024-02-01, 7d
