@@ -194,25 +194,30 @@ gantt
     dateFormat  YYYY-MM-DD
     axisFormat  Sem %W
     
-    section Infraestructura
-    Docker & Git                     :done,    d1, 2024-01-01, 7d
-    Simulador Python                 :active,  d2, after d1, 7d
-    Kafka & Ingesta                  :         d3, after d2, 7d
+    %% --- FASE 1: Semanas 1 a 3 ---
+    section Fase 1: Infraestructura
+    Configuración Docker & Git       :done,    f1_env, 2024-01-01, 1w
+    Simulador Python IoT             :active,  f1_sim, after f1_env, 1w
+    Ingesta Kafka & Topics           :         f1_kaf, after f1_sim, 1w
     
-    %% ... resto del código igual ...
-    section Big Data & ETL
-    Spark & HDFS                     :         d4, after d3, 7d
-    Pipeline ETL (Kafka->Mongo)      :         d5, after d4, 14d
+    %% --- FASE 2: Semanas 4 a 6 ---
+    section Fase 2: Big Data
+    Configuración Spark Streaming    :         f2_spk, after f1_kaf, 1w
+    Data Lake (HDFS) & Parquet       :         f2_hdf, after f2_spk, 1w
+    Pipeline ETL (Limpieza -> Mongo) :         f2_etl, after f2_hdf, 1w
 
-    section IA & Modelo
-    Análisis & Jupyter               :         d6, after d5, 7d
-    Entrenamiento & API              :         d7, after d6, 14d
+    %% --- FASE 3: Semanas 7 a 9 ---
+    section Fase 3: IA & Modelo
+    EDA & Análisis en Jupyter        :         f3_eda, after f2_etl, 1w
+    Entrenamiento Modelo (Regresión) :         f3_train, after f3_eda, 2w
 
-    section Web App
-    Backend FastAPI                  :         d8, after d6, 10d
-    Frontend React                   :         d9, after d8, 14d
+    %% --- FASE 4: Semanas 10 a 12 ---
+    section Fase 4: Full Stack
+    Backend API (FastAPI)            :         f4_back, after f3_train, 1w
+    Frontend & Mapas (React)         :         f4_front, after f4_back, 2w
 
-    section Cierre
-    Automatización & BI              :         d10, after d9, 7d
-    Memoria & Defensa                :         d11, after d10, 7d
+    %% --- FASE 5: Semanas 13 a 14 ---
+    section Fase 5: Cierre
+    Alertas n8n & Power BI           :         f5_bi, after f4_front, 1w
+    Memoria Técnica & Defensa        :crit,    f5_doc, after f5_bi, 1w
 ```
