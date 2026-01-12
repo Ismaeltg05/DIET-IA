@@ -21,62 +21,96 @@ Desarrollar un sistema integral "Smart Taxi" que procese flujos de datos geoespa
 
 ---
 
-## 2. Fuentes de Datos Previstas
+## 2. Exploración del Estado del Arte
 
-Para cumplir con los requisitos de variedad y volumen del dato, el sistema se alimentará de dos fuentes principales:
+### 2.1 Contexto Actual de la Movilidad Urbana
+La movilidad en las ciudades modernas atraviesa un cambio de paradigma impulsado por el IoT y la analítica de datos. Tradicionalmente, la operación de taxis se ha basado en la experiencia empírica del conductor, resultando en una alta tasa de kilómetros recorridos en vacío (40-50% del tiempo operativo según estudios del sector).
+
+### 2.2 Soluciones Existentes y Competencia
+El mercado está dominado por plataformas VTC (Uber, Cabify) que utilizan algoritmos propietarios de "Surge Pricing" y asignación inteligente. Estas soluciones son "Cajas Negras". Las flotas de taxis tradicionales carecen de herramientas abiertas que les permitan competir en eficiencia tecnológica.
+
+### 2.3 Tecnologías Habilitadoras
+El estado del arte permite ahora procesar flujos masivos a bajo coste mediante:
+* **Procesamiento en Stream:** Herramientas como **Apache Kafka** y **Spark Streaming** han democratizado el procesamiento en tiempo real.
+* **Machine Learning Geoespacial:** Modelos de regresión y Clustering se aplican para segmentar ciudades en zonas de demanda dinámica.
+
+---
+
+## 3. Alcance del Proyecto
+
+### 3.1 Alcance Funcional (MVP)
+El proyecto desarrollará un Producto Mínimo Viable que cubra:
+1.  **Simulación de Entorno:** Generación de escenario con 100 taxis emitiendo datos GPS cada 2-5 segundos.
+2.  **Motor de Predicción:** Inferencia de demanda futura (30 min) basada en histórico y clima.
+3.  **Interfaz Operativa (Frontend):** Visualización de flota y "Zonas Calientes" (Heatmaps) en mapa real.
+4.  **Alertas:** Notificaciones automáticas ante anomalías de servicio.
+
+### 3.2 Alcance Técnico
+* **Big Data:** Ingesta y procesamiento distribuido (Kafka, Spark).
+* **Almacenamiento:** Arquitectura Lambda (HDFS + MongoDB).
+* **Desarrollo Web:** API RESTful (FastAPI) y Cliente SPA (React).
+* **DevOps:** Despliegue contenerizado (Docker).
+
+### 3.3 Exclusiones y Limitaciones
+* No se utilizará hardware real (sensores OBD/GPS) ni vehículos físicos; se usarán datos sintéticos.
+* No se desarrollará la App de pasajero (usuario final), solo la del conductor/gestor.
+* No se incluye pasarela de pagos ni navegación "turn-by-turn" (tipo Google Maps).
+
+---
+
+## 4. Fuentes de Datos Previstas
 
 ### A. Telemetría de Flota (Simulación IoT)
-Se desarrollará un script en Python (generador de logs sintéticos) que simula el comportamiento de 100 taxis en circulación continua.
+Script en Python (generador de logs sintéticos) que simula el comportamiento de 100 taxis.
 * **Formato:** JSON semiestructurado.
-* **Datos generados:** `ID_Taxi`, `Latitud`, `Longitud`, `Estado` (Libre/Ocupado), `Velocidad`, `Timestamp`.
+* **Variables:** `ID_Taxi`, `Latitud`, `Longitud`, `Estado` (Libre/Ocupado), `Velocidad`, `Timestamp`.
 * **Velocidad:** Streaming continuo simulando tiempo real.
 
 ### B. Datos Meteorológicos (APIs Públicas)
-Integración con APIs externas (ej. **OpenWeatherMap** o **AEMET**) para enriquecer el modelo.
+Integración con APIs externas (ej. **OpenWeatherMap** o **AEMET**).
+* **Justificación:** La lluvia o temperatura extrema afectan directamente a la demanda.
 * **Variables:** `Temperatura`, `Precipitación`, `Humedad`.
 
 ---
 
-## 3. Arquitectura Técnica Detallada
+## 5. Arquitectura Técnica Detallada
 
 La solución cubre todas las capas tecnológicas, desde el dato crudo hasta la interfaz de usuario:
 
-### 3.1 Ingesta y Streaming
+### 5.1 Ingesta y Streaming
 * **Tecnología:** **Apache Kafka**.
-* **Función:** Buffer de entrada para recibir miles de datos GPS por segundo desde el simulador Python y enviarlos al sistema de procesamiento sin pérdida de información.
+* **Función:** Buffer de entrada de alta velocidad para recibir los datos GPS del simulador.
 
-### 3.2 Almacenamiento (Persistencia Políglota)
+### 5.2 Almacenamiento (Persistencia Políglota)
 * **HDFS (Hadoop):** Almacenamiento "frío" para logs históricos masivos (Data Lake).
-* **MongoDB (NoSQL):** Almacenamiento "caliente". Base de datos operacional para guardar los resultados procesados y servir datos a la Web App.
+* **MongoDB (NoSQL):** Almacenamiento "caliente". Base de datos operacional para servir datos a la Web App y guardar resultados procesados.
 
-### 3.3 Procesamiento y Análisis
+### 5.3 Procesamiento y Análisis
 * **Tecnología:** **Apache Spark (PySpark)**.
-* **Tareas:** Limpieza de coordenadas, cálculo de velocidad media por calle y agregación de ventanas de tiempo para alimentar el modelo de IA.
+* **Tareas:** Limpieza de coordenadas, cálculo de velocidad media y agregación de ventanas de tiempo para alimentar el modelo.
 
-### 3.4 Inteligencia Artificial (Backend IA)
+### 5.4 Inteligencia Artificial (Backend IA)
 * **Modelo:** Regresión/Clustering con **Scikit-learn** o **Spark MLlib**.
 * **API de Inferencia:** Se encapsulará el modelo en una **API REST con FastAPI (Python)**.
     * *Endpoint:* `/api/predict/demand`.
-    * *Función:* Recibe coordenadas y hora -> Devuelve probabilidad de demanda (0-100%).
+    * *Función:* Recibe coordenadas/hora -> Devuelve probabilidad de demanda.
 
-### 3.5 Frontend y Experiencia de Usuario (Web App)
-Se desarrollará una **Single Page Application (SPA)** para la interacción final:
-* **Tecnología:** **React.js** (o Vue.js) + **Vite**.
-* **Mapas:** Librería **Leaflet.js** (OpenStreetMap) para visualizar la flota y las zonas calientes.
-* **Estilos:** **Tailwind CSS** para diseño responsivo (Mobile First).
-* **Funcionalidad:**
-    * *Vista Conductor:* Mapa con su ubicación y marcadores rojos en zonas de alta probabilidad de clientes.
-    * *Vista Control:* Panel general con la ubicación de toda la flota.
+### 5.5 Frontend y Experiencia de Usuario (Web App)
+Se desarrollará una **Single Page Application (SPA)**:
+* **Tecnología:** **React.js** + **Vite**.
+* **Mapas:** Librería **Leaflet.js** para visualizar la flota y zonas calientes.
+* **Estilos:** **Tailwind CSS**.
+* **Funcionalidad:** Vista para el conductor (mapa con zonas rojas de alta demanda) y vista de control para el gestor.
 
-### 3.6 Analítica de Negocio y Automatización
-* **Power BI:** Conectado a MongoDB para dashboards estratégicos (ingresos mensuales, KPIs históricos).
-* **n8n:** Orquestador de alertas. Si la demanda > 90% en una zona vacía, envía notificación a Telegram.
+### 5.6 Analítica de Negocio y Automatización
+* **Power BI:** Dashboards estratégicos conectados a MongoDB.
+* **n8n:** Orquestador de alertas (ej. Telegram si demanda > 90% y faltan coches).
 
 ---
 
-## 4. Diagrama de Arquitectura
+## 6. Diagrama de Arquitectura
 
-El flujo de datos completo, desde el sensor hasta la pantalla del usuario:
+El flujo de datos completo, desde el sensor simulado hasta la pantalla del usuario:
 
 ```mermaid
 graph LR
