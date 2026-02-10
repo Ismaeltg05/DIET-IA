@@ -1,223 +1,152 @@
-# Propuesta de Proyecto: Smart Taxi - Optimización de Flotas y Movilidad Urbana
-**Curso de Especialización en Inteligencia Artificial y Big Data**
+**IES Zaidín Vergeles — Proyecto de IA - BD** fileciteturn0file0
+
+**Autores:**
+- Adrián Ruiz Sánchez
+- Francisco José Salmerón Puig
+- Ismael Torres González
 
 ---
 
-## 1. Definición del Problema y Objetivos
+## Índice
 
-### 1.1 Descripción del Problema
-En el contexto de las *Smart Cities*, la gestión ineficiente de flotas de transporte urbano genera un aumento de emisiones de CO2, congestión de tráfico y pérdidas económicas significativas debido a taxis que circulan vacíos buscando clientes sin rumbo fijo.
-
-Actualmente, los sistemas tradicionales carecen de herramientas predictivas y de interfaces amigables para el conductor. **El problema central** a resolver es la incapacidad de anticipar la demanda en tiempo real y comunicarla eficazmente a la flota. Este proyecto propone un sistema capaz de predecir zonas de alta demanda y visualizarlas en una aplicación web interactiva para los conductores.
-
-### 1.2 Objetivos Generales
-Desarrollar un sistema integral "Smart Taxi" que procese flujos de datos geoespaciales (GPS) y meteorológicos en tiempo real para optimizar la operativa de la flota, utilizando técnicas de Big Data, Inteligencia Artificial, desarrollo Web y automatización.
-
-### 1.3 Objetivos Específicos
-1.  **Ingesta y Procesamiento Masivo:** Implementar una arquitectura capaz de procesar miles de registros por minuto (simulación IoT) mediante ingestión continua.
-2.  **Predicción de Demanda (IA):** Entrenar un modelo de Regresión que cruce variables temporales y climáticas para estimar la probabilidad de clientes por zona.
-3.  **Desarrollo Full Stack (Web App):** Crear una interfaz web interactiva (Frontend) que consuma una API propia para guiar a los conductores mediante mapas en tiempo real.
-4.  **Almacenamiento Híbrido:** Gestionar datos históricos en HDFS (Data Lake) y datos operacionales en MongoDB.
-
----
-
-## 2. Exploración del Estado del Arte
-
-### 2.1 Contexto Actual de la Movilidad Urbana
-La movilidad en las ciudades modernas atraviesa un cambio de paradigma impulsado por el IoT y la analítica de datos. Tradicionalmente, la operación de taxis se ha basado en la experiencia empírica del conductor, resultando en una alta tasa de kilómetros recorridos en vacío (40-50% del tiempo operativo según estudios del sector).
-
-### 2.2 Soluciones Existentes y Competencia
-El mercado está dominado por plataformas VTC (Uber, Cabify) que utilizan algoritmos propietarios de "Surge Pricing" y asignación inteligente. Estas soluciones son "Cajas Negras". Las flotas de taxis tradicionales carecen de herramientas abiertas que les permitan competir en eficiencia tecnológica.
-
-### 2.3 Tecnologías Habilitadoras
-El estado del arte permite ahora procesar flujos masivos a bajo coste mediante:
-* **Procesamiento en Stream:** Herramientas como **Apache Kafka** y **Spark Streaming** han democratizado el procesamiento en tiempo real.
-* **Machine Learning Geoespacial:** Modelos de regresión y Clustering se aplican para segmentar ciudades en zonas de demanda dinámica.
+- [Definición del problema y objetivos](#definición-del-problema-y-objetivos)
+  - [Objetivos principales](#objetivos-principales)
+- [Estado del arte y alcance](#estado-del-arte-y-alcance)
+- [Planificación del desarrollo](#planificación-del-desarrollo)
+- [Herramientas y tecnologías](#herramientas-y-tecnologías)
+  - [Inteligencia Artificial y Aprendizaje Automático (IA/ML)](#inteligencia-artificial-y-aprendizaje-automático-iaml)
+  - [Big Data y gestión de datos](#big-data-y-gestión-de-datos)
+  - [Backend y API](#backend-y-api)
+  - [Frontend](#frontend)
+  - [Visualización de datos](#visualización-de-datos)
+  - [Otras herramientas](#otras-herramientas)
+- [Fuentes de datos previstas](#fuentes-de-datos-previstas)
+  - [Recetas y nutrición](#recetas-y-nutrición)
+  - [Ingredientes y alergias](#ingredientes-y-alergias)
+  - [Datos de usuarios](#datos-de-usuarios)
+  - [Procesamiento inicial de los datos](#procesamiento-inicial-de-los-datos)
 
 ---
 
-## 3. Alcance del Proyecto
+## Definición del problema y objetivos
 
-### 3.1 Alcance Funcional (MVP)
-El proyecto desarrollará un Producto Mínimo Viable que cubra:
-1.  **Simulación de Entorno:** Generación de escenario con 100 taxis emitiendo datos GPS cada 2-5 segundos.
-2.  **Motor de Predicción:** Inferencia de demanda futura (30 min) basada en histórico y clima.
-3.  **Interfaz Operativa (Frontend):** Visualización de flota y "Zonas Calientes" (Heatmaps) en mapa real.
-4.  **Alertas:** Notificaciones automáticas ante anomalías de servicio.
+En la actualidad, muchas personas experimentan serias dificultades a la hora de planificar sus comidas diarias de forma adecuada. Estas dificultades aumentan cuando deben tenerse en cuenta factores como alergias e intolerancias alimentarias (por ejemplo, al gluten o a la lactosa), preferencias personales o éticas (como dietas veganas, vegetarianas o la necesidad de comidas rápidas) y objetivos de salud específicos, tales como la pérdida de peso o el control de la ingesta calórica. Como consecuencia, estas personas suelen sentirse frustradas, terminan recurriendo a opciones poco saludables o abandonan sus dietas, lo que da lugar a hábitos alimenticios poco sostenibles a largo plazo. fileciteturn0file0
 
-### 3.2 Alcance Técnico
-* **Big Data:** Ingesta y procesamiento distribuido (Kafka, Spark).
-* **Almacenamiento:** Arquitectura Lambda (HDFS + MongoDB).
-* **Desarrollo Web:** API RESTful (FastAPI) y Cliente SPA (React).
-* **DevOps:** Despliegue contenerizado (Docker).
+El problema principal radica en la ausencia de herramientas accesibles, intuitivas y personalizadas que integren de manera eficaz la recomendación inteligente de comidas con información nutricional precisa y fiable. Muchas soluciones actuales son demasiado genéricas, no contemplan múltiples restricciones simultáneamente o requieren un esfuerzo excesivo por parte del usuario para introducir y analizar los datos. Por ello, se hace necesario desarrollar una herramienta que facilite la planificación alimentaria diaria, adaptándose a las necesidades individuales y promoviendo hábitos saludables, equilibrados y sostenibles. fileciteturn0file0
 
-### 3.3 Exclusiones y Limitaciones
-* No se utilizará hardware real (sensores OBD/GPS) ni vehículos físicos; se usarán datos sintéticos.
-* No se desarrollará la App de pasajero (usuario final), solo la del conductor/gestor.
-* No se incluye pasarela de pagos ni navegación "turn-by-turn".
+El objetivo de este proyecto es diseñar una solución que permita a los usuarios planificar sus comidas de forma personalizada, teniendo en cuenta sus restricciones alimentarias, preferencias y metas nutricionales, proporcionando recomendaciones prácticas y basadas en datos nutricionales precisos, con el fin de mejorar su calidad de vida y favorecer una alimentación más consciente y saludable. fileciteturn0file0
 
 ---
 
-## 4. Fuentes de Datos Previstas
+## Objetivos principales
 
-### A. Telemetría de Flota (Simulación IoT)
-Script en Python (generador de logs sintéticos) que simula el comportamiento de 100 taxis.
-* **Formato:** JSON semiestructurado.
-* **Variables:** `ID_Taxi`, `Latitud`, `Longitud`, `Estado` (Libre/Ocupado), `Velocidad`, `Timestamp`.
-* **Velocidad:** Streaming continuo simulando tiempo real.
+- Desarrollar un asistente basado en modelos de lenguaje de gran tamaño (LLM) que permita la generación, adaptación y recomendación de recetas personalizadas a través de una interfaz conversacional. Este asistente deberá ser capaz de excluir automáticamente alérgenos específicos, respetar preferencias alimentarias y ajustar los valores nutricionales, como macronutrientes y calorías, en función de los objetivos individuales de cada usuario. fileciteturn0file0
 
-### B. Datos Meteorológicos (APIs Públicas)
-Integración con APIs externas (ej. **OpenWeatherMap** o **AEMET**) para enriquecer el modelo.
-* **Justificación:** La lluvia o temperatura extrema afectan directamente a la demanda.
-* **Variables:** `Temperatura`, `Precipitación`, `Humedad`.
+- Diseñar un sistema capaz de almacenar, gestionar y procesar grandes volúmenes de datos relacionados con recetas, ingredientes y valores nutricionales. Este sistema deberá permitir un filtrado eficiente y escalable, garantizando tiempos de respuesta adecuados incluso ante un alto número de consultas y combinaciones de restricciones alimentarias. fileciteturn0file0
+
+- Desplegar una API funcional, segura y escalable que exponga los servicios de recomendación y personalización de recetas. Dicha API deberá integrarse con un dashboard de análisis que permita visualizar métricas de uso, rendimiento del sistema y patrones de consumo, facilitando tanto la monitorización del servicio como la toma de decisiones basadas en datos para futuras mejoras del asistente. fileciteturn0file0
 
 ---
 
-## 5. Arquitectura Técnica Detallada
+## Estado del arte y alcance
 
-La solución cubre todas las capas tecnológicas, desde el dato crudo hasta la interfaz de usuario:
+En los últimos años han surgido diversas aplicaciones y plataformas comerciales orientadas a la generación y recomendación de recetas mediante inteligencia artificial. Herramientas como ChefGPT, DishGen o SuperCook emplean modelos avanzados para sugerir recetas en función de los ingredientes disponibles, el tipo de dieta (como keto, vegana o vegetariana) o restricciones específicas del usuario. Estas soluciones suelen incorporar funcionalidades adicionales como el seguimiento calórico, la planificación semanal de comidas y, en algunos casos, la estimación de macronutrientes, lo que facilita la adopción de hábitos alimentarios más estructurados. fileciteturn0file0
 
-### 5.1 Ingesta y Streaming
-* **Tecnología:** **Apache Kafka**.
-* **Función:** Buffer de entrada de alta velocidad para recibir los datos GPS del simulador.
+Desde el ámbito académico, se han desarrollado sistemas más orientados a la personalización y la explicabilidad de las recomendaciones. Muchos de estos enfoques combinan modelos de lenguaje de gran tamaño (LLM) con sistemas basados en reglas expertas (Rule-Based Reasoning, RBR), permitiendo justificar las recomendaciones ofrecidas al usuario. Dichos sistemas suelen tener en cuenta variables como el metabolismo basal (BMR), el nivel de actividad física, objetivos de salud y la presencia de alergias o intolerancias alimentarias. A nivel tecnológico, es habitual el uso de bases de datos NoSQL como MongoDB para el almacenamiento de recetas e ingredientes, junto con APIs REST para la comunicación entre los distintos componentes del sistema. fileciteturn0file0
 
-### 5.2 Almacenamiento (Persistencia Políglota)
-* **HDFS (Hadoop):** Almacenamiento "frío" para logs históricos masivos (Data Lake).
-* **MongoDB (NoSQL):** Almacenamiento "caliente". Base de datos operacional para servir datos a la Web App y guardar resultados procesados.
+En cuanto al alcance del proyecto, este se centra en el desarrollo de un producto mínimo viable (MVP) que ofrezca una experiencia conversacional mediante chat, combinada con un perfil de usuario básico para almacenar preferencias, restricciones y objetivos nutricionales. El sistema procesará un conjunto inicial de más de 1.000 recetas, permitiendo aplicar filtros estrictos por alergias, dietas y preferencias alimentarias, así como mostrar métricas nutricionales relevantes (calorías y macronutrientes). fileciteturn0file0
 
-### 5.3 Procesamiento y Análisis
-* **Tecnología:** **Apache Spark (PySpark)**.
-* **Tareas:** Limpieza de coordenadas, cálculo de velocidad media y agregación de ventanas de tiempo para alimentar el modelo.
-
-### 5.4 Inteligencia Artificial (Backend IA)
-* **Modelo:** Regresión/Clustering con **Scikit-learn** o **Spark MLlib**.
-* **API de Inferencia:** Se encapsulará el modelo en una **API REST con FastAPI (Python)**.
-    * *Endpoint:* `/api/predict/demand`.
-    * *Función:* Recibe coordenadas/hora -> Devuelve probabilidad de demanda.
-
-### 5.5 Frontend y Experiencia de Usuario (Web App)
-Se desarrollará una **Single Page Application (SPA)**:
-* **Tecnología:** **React.js** + **Vite**.
-* **Mapas:** Librería **Leaflet.js** para visualizar la flota y zonas calientes.
-* **Estilos:** **Tailwind CSS**.
-* **Funcionalidad:** Vista para el conductor (mapa con zonas rojas de alta demanda) y vista de control para el gestor.
-
-### 5.6 Analítica de Negocio y Automatización
-* **Power BI:** Dashboards estratégicos conectados a MongoDB.
-* **n8n:** Orquestador de alertas (ej. Telegram si demanda > 90% y faltan coches).
+Quedan fuera del alcance del proyecto el entrenamiento de modelos LLM desde cero, optándose por el uso de APIs de modelos preentrenados, cuya elección será debidamente justificada. Asimismo, no se abordará el escalado industrial del sistema ni su despliegue en entornos de producción de alta demanda, centrándose el trabajo en la validación funcional y técnica del enfoque propuesto. fileciteturn0file0
 
 ---
 
-## 6. Diagrama de Arquitectura
+## Planificación del desarrollo
 
-El flujo de datos completo, desde el sensor simulado hasta la pantalla del usuario:
-
-```mermaid
-graph LR
-    subgraph Fuentes
-        A["Simulador Python GPS"] -->|"JSON Stream"| B("Apache Kafka")
-        W["API Clima"] -.->|"Enriquecimiento"| C
-    end
-
-    subgraph BigDataIA ["Big Data & IA"]
-        B -->|"Ingesta"| C{"Apache Spark"}
-        C -->|"ETL & Limpieza"| C
-        C -->|"Modelo ML"| C
-    end
-
-    subgraph Persistencia
-        C -->|"Raw Data"| D[("HDFS")]
-        C -->|"Datos Procesados"| E[("MongoDB")]
-    end
-
-    subgraph BackendAPI ["Backend API"]
-        E -->|"Query"| F["API REST (FastAPI)"]
-    end
-
-    subgraph Frontend ["Frontend & Explotación"]
-        F -->|"JSON"| G["Web App (React + Leaflet)"]
-        F -->|"JSON"| H["Power BI Dashboard"]
-        F -->|"Trigger"| I["n8n Alertas"]
-    end
-```
+| Fase | Tareas principales | Duración | Fecha estimada |
+|------|--------------------|----------|----------------|
+| 1. Investigación y datos | Recopilar datasets, diseñar esquema BD, prototipo prompts LLM. | 2 semanas | 22 ene - 5 feb |
+| 2. Desarrollo core | Implementar recomendador (filtros, RAG), API backend, modelo ML básico. | 4 semanas | 6 feb - 5 mar |
+| 3. Integración Big Data | Procesar datasets con Spark/MongoDB, dashboard Power BI. | 2 semanas | 6 - 20 mar |
+| 4. Frontend y pruebas | Chat UI, tests usuarios (10 perfiles simulados), refinamiento. | 3 semanas | 21 mar - 11 abr |
+| 5. Documentación y defensa | GitHub repo, video demo (20 min), informe técnico. | 1 semana | 12 - 22 abr |
 
 ---
 
-# 7. Planificación y Fases de Desarrollo
+## Herramientas y tecnologías
 
-Para garantizar el éxito del proyecto, el desarrollo se divide en **5 fases incrementales**, asegurando entregables funcionales en cada etapa.
+### Inteligencia Artificial y Aprendizaje Automático (IA/ML)
 
----
+El desarrollo del sistema de recomendación se realizará principalmente en Python, utilizando librerías ampliamente adoptadas en el ámbito del análisis de datos y el aprendizaje automático. Pandas se empleará para la manipulación y limpieza de datos nutricionales y de recetas, mientras que scikit-learn permitirá implementar un recomendador *content-based*, basado en la similitud entre ingredientes, perfiles nutricionales y preferencias del usuario. fileciteturn0file0
 
-## Fase 1: Infraestructura y Datos (Semanas 1-3)
-**Objetivo:** Tener el entorno listo y los datos fluyendo.
-
-* **Configuración de entorno:** Repositorio Git y `docker-compose` (Zookeeper, Kafka, Mongo, HDFS).
-* **Simulación IoT:** Desarrollo del script Python (IoT Mock) para generar coordenadas aleatorias realistas.
-* **Ingesta:** Creación del Topic Kafka y conexión del Producer.
-
-## Fase 2: Procesamiento Big Data (Semanas 4-6)
-**Objetivo:** Capturar los datos, limpiarlos y guardarlos.
-
-* **Streaming:** Configuración de Spark Streaming para leer de Kafka.
-* **Data Lake:** Guardado de histórico en HDFS (formato Parquet).
-* **Pipeline ETL:** Limpieza y guardado de "Estado Actual" en MongoDB.
-
-## Fase 3: Inteligencia Artificial (Semanas 7-9)
-**Objetivo:** Darle capacidad predictiva al sistema.
-
-* **Análisis:** Análisis Exploratorio (EDA) en Jupyter Notebooks.
-* **Entrenamiento:** Modelo de Regresión con Scikit-learn/SparkML.
-* **Despliegue de Modelo:** Serialización del modelo (`.pkl`) y pruebas de precisión.
-
-## Fase 4: Desarrollo Full Stack (Semanas 10-12)
-**Objetivo:** Hacer el sistema utilizable mediante la Web App.
-
-* **Backend:** Crear API con FastAPI que cargue el modelo y exponga endpoints.
-* **Frontend:** Configurar React + Vite e integrar Leaflet (Mapas).
-* **Integración:** Conectar Frontend con API para visualizar marcadores y zonas de calor.
-
-## Fase 5: Automatización y Cierre (Semanas 13-14)
-**Objetivo:** Pulir el producto final.
-
-* **Alertas:** Configurar n8n para alertas automáticas (Telegram).
-* **Business Intelligence:** Crear Dashboard de KPIs en Power BI.
-* **Documentación:** Redacción de memoria técnica y defensa.
+Para la generación y adaptación de recetas en lenguaje natural, se integrarán APIs de modelos LLM preentrenados, como OpenAI o Groq, cuya elección se justifica por su eficiencia, calidad de resultados y reducción de costes computacionales frente al entrenamiento de modelos propios. fileciteturn0file0
 
 ---
 
-## Cronograma del Proyecto (Gantt)
+### Big Data y gestión de datos
 
-```mermaid
-gantt
-    title Cronograma - Smart Taxi (14 Semanas)
-    dateFormat  YYYY-MM-DD
-    axisFormat  Sem %W
-    
-    %% --- FASE 1: Semanas 1 a 3 ---
-    section Fase 1: Infraestructura
-    Configuración Docker & Git       :done,    f1_env, 2024-01-01, 1w
-    Simulador Python IoT             :active,  f1_sim, after f1_env, 1w
-    Ingesta Kafka & Topics           :         f1_kaf, after f1_sim, 1w
-    
-    %% --- FASE 2: Semanas 4 a 6 ---
-    section Fase 2: Big Data
-    Configuración Spark Streaming    :         f2_spk, after f1_kaf, 1w
-    Data Lake (HDFS) & Parquet       :         f2_hdf, after f2_spk, 1w
-    Pipeline ETL (Limpieza -> Mongo) :         f2_etl, after f2_hdf, 1w
+La persistencia de la información se realizará mediante MongoDB, una base de datos NoSQL adecuada para almacenar perfiles de usuario, recetas y estructuras de datos semiestructuradas de forma flexible. fileciteturn0file0
 
-    %% --- FASE 3: Semanas 7 a 9 ---
-    section Fase 3: IA & Modelo
-    EDA & Análisis en Jupyter        :         f3_eda, after f2_etl, 1w
-    Entrenamiento Modelo (Regresión) :         f3_train, after f3_eda, 2w
+Para el procesamiento de grandes volúmenes de datos se utilizará Apache Spark, permitiendo el tratamiento eficiente de datasets extensos de ingredientes y valores nutricionales. De forma opcional, se contempla el uso de HDFS (Hadoop Distributed File System) para el almacenamiento distribuido en caso de trabajar con volúmenes de datos significativamente grandes. fileciteturn0file0
 
-    %% --- FASE 4: Semanas 10 a 12 ---
-    section Fase 4: Full Stack
-    Backend API (FastAPI)            :         f4_back, after f3_train, 1w
-    Frontend & Mapas (React)         :         f4_front, after f4_back, 2w
+---
 
-    %% --- FASE 5: Semanas 13 a 14 ---
-    section Fase 5: Cierre
-    Alertas n8n & Power BI           :         f5_bi, after f4_front, 1w
-    Memoria Técnica & Defensa        :crit,    f5_doc, after f5_bi, 1w
-```
+### Backend y API
+
+El backend del sistema se desarrollará utilizando FastAPI o Flask, exponiendo una API REST que gestione las peticiones del frontend, la lógica de recomendación y la comunicación con los servicios de IA. fileciteturn0file0
+
+Para facilitar el despliegue, la portabilidad y la reproducibilidad del entorno, se empleará Docker, encapsulando la aplicación y sus dependencias en contenedores. fileciteturn0file0
+
+---
+
+### Frontend
+
+La interfaz de usuario se implementará mediante React Native con Tailwind CSS, permitiendo el desarrollo rápido de una aplicación móvil multiplataforma (iOS/Android/web) que incluye un chat conversacional con el asistente y un panel de control (dashboard) para la visualización de recomendaciones y métricas básicas del usuario. fileciteturn0file0
+
+---
+
+### Visualización de datos
+
+Para la generación de informes y la visualización de información nutricional se utilizarán herramientas como Matplotlib para gráficos integrados en la aplicación, así como Power BI para la elaboración de dashboards más avanzados orientados al análisis y la presentación de resultados. fileciteturn0file0
+
+---
+
+### Otras herramientas
+
+El control de versiones y la gestión del código se realizarán a través de GitHub, manteniendo un repositorio público del proyecto. fileciteturn0file0
+
+Además, se empleará n8n como herramienta de automatización para los procesos ETL (extracción, transformación y carga de datos), facilitando la actualización y mantenimiento de los datasets utilizados por el sistema. fileciteturn0file0
+
+---
+
+## Fuentes de datos previstas
+
+### Recetas y nutrición
+
+Para la obtención de información nutricional fiable se utilizará la Base Española de Datos de Composición de Alimentos (BEDCA), que incluye información detallada de más de 800 alimentos, como valores calóricos y macronutrientes. Esta fuente resulta especialmente relevante por su carácter oficial y su adecuación al contexto alimentario español. fileciteturn0file0
+
+Adicionalmente, se integrará la API de Edamam, que proporciona acceso a más de 200.000 recetas etiquetadas con información sobre ingredientes, alérgenos, tipos de dieta y valores nutricionales, lo que permitirá enriquecer el sistema de recomendación y ampliar la diversidad de recetas disponibles. fileciteturn0file0
+
+---
+
+### Ingredientes y alergias
+
+Para complementar la información sobre ingredientes y restricciones alimentarias, se emplearán bases de datos internacionales como INFOODS, promovida por la FAO, que ofrece datos estandarizados sobre composición de alimentos a nivel global. fileciteturn0file0
+
+Asimismo, se recurrirá a datasets disponibles en Kaggle, como conjuntos de datos del tipo **“Recipe Ingredients”**, útiles para el etiquetado de ingredientes, la detección de alérgenos y la categorización de recetas según distintos criterios dietéticos. fileciteturn0file0
+
+---
+
+### Datos de usuarios
+
+Dado que el proyecto se limita a un entorno de prueba, los datos de usuario se basarán en perfiles simulados, generando más de 100 perfiles sintéticos que incluyan alergias, preferencias alimentarias y objetivos nutricionales. fileciteturn0file0
+
+Estos perfiles permitirán validar el funcionamiento del sistema de recomendación y servirán como base para la recogida de feedback histórico, utilizado posteriormente para la mejora del modelo de recomendación mediante técnicas de aprendizaje automático. fileciteturn0file0
+
+---
+
+### Procesamiento inicial de los datos
+
+Los datos se obtendrán inicialmente en formatos CSV y JSON, siendo procesados mediante Apache Spark para llevar a cabo tareas de limpieza, normalización y agregación. fileciteturn0file0
+
+Una vez procesados, los datos se cargarán en MongoDB, facilitando un acceso eficiente y flexible a la información durante la ejecución del sistema y el desarrollo de las funcionalidades del asistente conversacional. fileciteturn0file0
+"""
