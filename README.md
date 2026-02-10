@@ -147,4 +147,4 @@ Estos perfiles permitirán validar el funcionamiento del sistema de recomendaci�
 Los datos se obtendrán inicialmente en formatos CSV y JSON, siendo procesados mediante Apache Spark para llevar a cabo tareas de limpieza, normalización y agregación.
 
 Una vez procesados, los datos se cargarán en MongoDB, facilitando un acceso eficiente y flexible a la información durante la ejecución del sistema y el desarrollo de las funcionalidades del asistente conversacional.
-"""
+
