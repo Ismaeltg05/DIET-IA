@@ -2,109 +2,113 @@ version: '3.8'
 
 services:
   # -------------------------------------------------------
-  # 1. CORE: ZOOKEEPER & KAFKA (Ingesta de Datos)
+  # 1. BASE DE DATOS: MONGODB (Recetas, Perfiles DIET-IA y Logs)
   # -------------------------------------------------------
-  zookeeper:
-    image: wurstmeister/zookeeper
-    container_name: zookeeper
-    ports:
-      - "2181:2181"
-    networks:
-      - smart-taxi-net
-
-  kafka:
-    image: wurstmeister/kafka
-    container_name: kafka
-    ports:
-      - "9092:9092"
-    environment:
-      # Permite conexión desde fuera (localhost) y dentro de la red docker
-      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9093,OUTSIDE://localhost:9092
-      KAFKA_LISTENERS: INSIDE://0.0.0.0:9093,OUTSIDE://0.0.0.0:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-    depends_on:
-      - zookeeper
-    networks:
-      - smart-taxi-net
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-
-  # -------------------------------------------------------
-  # 2. ALMACENAMIENTO: HDFS (Hadoop Distributed File System)
-  # -------------------------------------------------------
-  namenode:
-    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
-    container_name: namenode
-    restart: always
-    ports:
-      - "9870:9870" # Interfaz Web HDFS (Ver archivos en navegador)
-      - "9000:9000" # Puerto IPC para conexión
-    environment:
-      - CLUSTER_NAME=test
-    env_file:
-      - ./hadoop.env
-    networks:
-      - smart-taxi-net
-
-  datanode:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: datanode
-    restart: always
-    environment:
-      - SERVICE_PRECONDITION=namenode:9870
-    env_file:
-      - ./hadoop.env
-    networks:
-      - smart-taxi-net
-
-  # -------------------------------------------------------
-  # 3. PROCESAMIENTO: SPARK (Master & Worker)
-  # -------------------------------------------------------
-  spark-master:
-    image: bitnami/spark:3.5
-    container_name: spark-master
-    environment:
-      - SPARK_MODE=master
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
-    ports:
-      - "8080:8080" # Spark Web UI (Dashboard)
-      - "7077:7077" # Master Port
-    networks:
-      - smart-taxi-net
-
-  spark-worker:
-    image: bitnami/spark:3.5
-    container_name: spark-worker
-    environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_MEMORY=1G
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
-    depends_on:
-      - spark-master
-    networks:
-      - smart-taxi-net
-
-  # -------------------------------------------------------
-  # 4. BASE DE DATOS NOSQL: MONGODB
-  # -------------------------------------------------------
-  mongo:
+  diet-ia-db:
     image: mongo:latest
-    container_name: mongodb
+    container_name: diet-ia-mongodb
+    restart: always
     ports:
       - "27017:27017"
     environment:
-      - MONGO_INITDB_DATABASE=smart_taxi
+      - MONGO_INITDB_DATABASE=diet_ia_db
     networks:
-      - smart-taxi-net
+      - diet-ia-net
+    volumes:
+      - mongo_data:/data/db
 
-# Red personalizada para que todos se vean por nombre
+  # -------------------------------------------------------
+  # 2. PROCESAMIENTO BIG DATA: SPARK (Master & Worker)
+  # -------------------------------------------------------
+  spark-master:
+    image: bitnami/spark:3.5
+    container_name: diet-ia-spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+    ports:
+      - "8080:8080" # Spark Web UI
+      - "7077:7077" # Puerto interno de comunicación
+    networks:
+      - diet-ia-net
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    container_name: diet-ia-spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+    depends_on:
+      - spark-master
+    networks:
+      - diet-ia-net
+
+  # -------------------------------------------------------
+  # 3. AUTOMATIZACIÓN ETL: n8n (Ingesta de BEDCA / Edamam)
+  # -------------------------------------------------------
+  diet-ia-etl:
+    image: n8nio/n8n:latest
+    container_name: diet-ia-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - NODE_ENV=production
+    networks:
+      - diet-ia-net
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  # -------------------------------------------------------
+  # 4. BACKEND: FastAPI (IA de DIET-IA y Recomendador)
+  # -------------------------------------------------------
+  diet-ia-api:
+    build: 
+      context: ./backend # Directorio donde estará vuestro código y Dockerfile
+    container_name: diet-ia-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URL=mongodb://diet-ia-db:27017/diet_ia_db
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    depends_on:
+      - diet-ia-db
+    networks:
+      - diet-ia-net
+
+  # -------------------------------------------------------
+  # 5. ALMACENAMIENTO: HDFS (Opcional para Datasets crudos)
+  # -------------------------------------------------------
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: diet-ia-namenode
+    ports:
+      - "9870:9870"
+      - "9000:9000"
+    environment:
+      - CLUSTER_NAME=diet_ia_cluster
+    networks:
+      - diet-ia-net
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: diet-ia-datanode
+    environment:
+      - SERVICE_PRECONDITION=namenode:9870
+    depends_on:
+      - namenode
+    networks:
+      - diet-ia-net
+
+# Red y volúmenes persistentes
 networks:
-  smart-taxi-net:
+  diet-ia-net:
     driver: bridge
+
+volumes:
+  mongo_data:
+  n8n_data:
