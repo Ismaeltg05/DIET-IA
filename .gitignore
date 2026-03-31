@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.env
+.env.*
+.DS_Store
+*.sqlite
+models/
+*.h5
+*.pt
+
+# Optional: ignorar la carpeta .git/lfs object because it's local
+.git/lfs/objects/
