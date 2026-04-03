@@ -23,9 +23,7 @@ source .venv/bin/activate  # Linux/Mac
 
 ```bash
 pip install --upgrade pip
-pip install pandas numpy scikit-learn matplotlib sentence-transformers joblib
-pip install spacy==3.7.2 spacy-lookups-data
-python -m spacy download en_core_web_sm
+pip install pandas numpy scikit-learn matplotlib sentence-transformers joblib transformers torch datasets accelerate flask
 ```
 
 4. Archivos de entrenamiento generados:
@@ -35,13 +33,13 @@ python -m spacy download en_core_web_sm
 5. Ejecutar entrenamiento KNN semántico:
 
 ```bash
-python python\\train_recommender.py
+python ./python/rain_recommender.py
 ```
 
 6. Ejecutar entrenamiento NER de ingredientes:
 
 ```bash
-python python\\ner_ingredients_knn.py
+python ./python/ner_ingredients_knn.py
 ```
 
 6. Artefactos generados (carpeta `models/`):
@@ -51,6 +49,35 @@ python python\\ner_ingredients_knn.py
 - carpeta `embedder/` con transformer guardado
 - `history_YYYYMMDD_HHMMSS.csv`
 - `history_plot_YYYYMMDD_HHMMSS.png`
+- carpeta `ner/` con `best_ner_model/`, `unique_ingredients.txt`, y `training_loss_YYYYMMDD_HHMMSS.png` (si se genera)
+
+## API REST
+
+Después de entrenar los modelos, puedes levantar una API para usarlos.
+
+1. Ejecutar la API: `python ./python api.py`
+
+2. La API estará disponible en `http://localhost:5000`
+
+### Endpoints
+
+- **POST /extract_ingredients**: Extrae ingredientes de un texto.
+  - Input: `{"text": "Texto con ingredientes"}`
+  - Output: `{"ingredients": ["ingrediente1", "ingrediente2"]}`
+
+- **POST /recommend_recipes**: Recomienda recetas basadas en ingredientes.
+  - Input: `{"ingredients": ["ingrediente1", "ingrediente2"]}`
+  - Output: `{"recommendations": [{"Title": "Receta1", "Instructions": "Pasos..."}, ...]}`
+
+### Ejemplo de uso con curl
+
+```bash
+# Extracción de ingredientes
+curl -X POST http://localhost:5000/extract_ingredients -H "Content-Type: application/json" -d '{"text": "I have tomatoes, potatoes, olive oil and peppers at home."}'
+
+# Recomendación de recetas
+curl -X POST http://localhost:5000/recommend_recipes -H "Content-Type: application/json" -d '{"ingredients": ["tomatoes", "olive oil"]}'
+```
 
 ## Importaciones que usa el script
 ```python
