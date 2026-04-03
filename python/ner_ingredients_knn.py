@@ -4,9 +4,11 @@ import random
 from typing import List, Set
 
 import pandas as pd
-import spacy
-from spacy.training import Example
-from spacy.util import minibatch, compounding
+from transformers import AutoTokenizer, AutoModelForTokenClassification, TrainingArguments, Trainer, pipeline
+from datasets import Dataset
+import torch
+import matplotlib.pyplot as plt
+from datetime import datetime
 
 
 def to_list(x):
@@ -43,17 +45,41 @@ def clean_substrings(ings: List[str]) -> List[str]:
     return final
 
 
+def convert_to_bio(text, entities, label="FOOD"):
+    words = text.split()  # simple split
+    ner_tags = ["O"] * len(words)
+    char_pos = 0
+    for word_idx, word in enumerate(words):
+        start_char = text.find(word, char_pos)
+        end_char = start_char + len(word)
+        for ent_start, ent_end, ent_label in entities:
+            if ent_start <= start_char < ent_end:
+                ner_tags[word_idx] = f"B-{label}"
+                # mark following words as I if they overlap
+                current_end = end_char
+                for j in range(word_idx + 1, len(words)):
+                    next_start = text.find(words[j], current_end)
+                    if next_start < ent_end:
+                        ner_tags[j] = f"I-{label}"
+                        current_end = next_start + len(words[j])
+                    else:
+                        break
+                break
+        char_pos = end_char
+    return words, ner_tags
+
+
 def build_train_data(df: pd.DataFrame, sample_size=8000):
-    df = df.dropna(subset=["ingredients", "steps"]).reset_index(drop=True)
+    df = df.dropna(subset=["Ingredients", "Instructions"]).reset_index(drop=True)
     sample_df = df.sample(n=min(sample_size, len(df)), random_state=42)
 
     train_data = []
     for _, row in sample_df.iterrows():
-        ingredients = [str(i).strip().lower() for i in to_list(row["ingredients"]) if str(i).strip()]
+        ingredients = [str(i).strip().lower() for i in to_list(row["Ingredients"]) if str(i).strip()]
         if not ingredients:
             continue
 
-        text = steps_to_text(row["steps"])
+        text = steps_to_text(row["Instructions"])
         text_low = text.lower()
         entities = []
 
@@ -61,7 +87,7 @@ def build_train_data(df: pd.DataFrame, sample_size=8000):
             start = text_low.find(ingr)
             if start != -1:
                 end = start + len(ingr)
-                entities.append((start, end, "INGREDIENT"))
+                entities.append((start, end, "FOOD"))
 
         if not entities:
             continue
@@ -83,38 +109,94 @@ def build_train_data(df: pd.DataFrame, sample_size=8000):
 
 
 def train_ner_model(train_data, n_iter=8):
-    nlp = spacy.load("en_core_web_sm")
-    if "ner" not in nlp.pipe_names:
-        ner = nlp.add_pipe("ner")
-    else:
-        ner = nlp.get_pipe("ner")
+    model_name = "chambliss/distilbert-for-food-extraction"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForTokenClassification.from_pretrained(model_name)
 
-    ner.add_label("INGREDIENT")
+    label2id = model.config.label2id
+    id2label = model.config.id2label
 
-    other_pipes = [pipe for pipe in nlp.pipe_names if pipe != "ner"]
-    with nlp.disable_pipes(*other_pipes):
-        optimizer = nlp.begin_training()
-        for itn in range(n_iter):
-            random.shuffle(train_data)
-            losses = {}
-            batches = minibatch(train_data, size=compounding(4.0, 32.0, 1.001))
-            for batch in batches:
-                examples = []
-                for text, annotations in batch:
-                    doc = nlp.make_doc(text)
-                    examples.append(Example.from_dict(doc, annotations))
-                nlp.update(examples, sgd=optimizer, losses=losses)
-            print(f"Iteración {itn + 1}/{n_iter} Losses: {losses}")
+    # convert train_data
+    converted_data = []
+    for text, annotations in train_data:
+        entities = annotations["entities"]
+        words, ner_tags = convert_to_bio(text, entities, "FOOD")
+        ner_tag_ids = [label2id.get(tag, 0) for tag in ner_tags]  # default to O if not found
+        converted_data.append({"tokens": words, "ner_tags": ner_tag_ids})
 
-    return nlp
+    dataset = Dataset.from_list(converted_data)
+
+    # tokenize
+    def tokenize_and_align_labels(examples):
+        tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True, max_length=512, padding=True)
+        labels = []
+        for i, label in enumerate(examples["ner_tags"]):
+            word_ids = tokenized_inputs.word_ids(batch_index=i)
+            previous_word_idx = None
+            label_ids = []
+            for word_idx in word_ids:
+                if word_idx is None:
+                    label_ids.append(-100)
+                elif word_idx != previous_word_idx:
+                    label_ids.append(label[word_idx])
+                else:
+                    label_ids.append(label[word_idx])
+            # Pad labels to match the padded input length
+            label_ids += [-100] * (len(tokenized_inputs["input_ids"][i]) - len(label_ids))
+            labels.append(label_ids)
+        tokenized_inputs["labels"] = labels
+        return tokenized_inputs
+
+    tokenized_dataset = dataset.map(tokenize_and_align_labels, batched=True)
+
+    # training args
+    training_args = TrainingArguments(
+        output_dir="./results",
+        eval_strategy="no",
+        learning_rate=2e-5,
+        per_device_train_batch_size=16,
+        per_device_eval_batch_size=16,
+        num_train_epochs=n_iter,
+        weight_decay=0.01,
+        save_strategy="no",
+        logging_dir="./logs",
+        logging_steps=10,
+    )
+
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=tokenized_dataset,
+    )
+
+    trainer.train()
+
+    # Plot training loss
+    log_history = trainer.state.log_history
+    losses = [log['loss'] for log in log_history if 'loss' in log]
+    steps = [log['step'] for log in log_history if 'loss' in log]
+
+    if losses:
+        plt.figure()
+        plt.plot(steps, losses)
+        plt.xlabel('Step')
+        plt.ylabel('Loss')
+        plt.title('Training Loss')
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        plot_path = os.path.join(model_dir, f'training_loss_{timestamp}.png')
+        plt.savefig(plot_path)
+        print(f"Gráfica de pérdida guardada en: {plot_path}")
+
+    return model, tokenizer
 
 
-def extract_ingredients_hybrid(text: str, nlp_model, unique_ingredients_sorted: List[str]) -> Set[str]:
-    text_low = text.lower()
-    doc = nlp_model(text_low)
-    ents = {ent.text for ent in doc.ents if ent.label_ == "INGREDIENT"}
+def extract_ingredients_hybrid(text: str, model, tokenizer, unique_ingredients_sorted: List[str]) -> Set[str]:
+    ner_pipeline = pipeline("ner", model=model, tokenizer=tokenizer, aggregation_strategy="simple")
+    results = ner_pipeline(text.lower())
+    ents = {ent["word"] for ent in results if ent["entity_group"] == "FOOD"}
 
     # heurística extra: coincidencia de ingredientes conocidos
+    text_low = text.lower()
     for ingr in unique_ingredients_sorted:
         if ingr in text_low and ingr not in ents:
             ents.add(ingr)
@@ -123,8 +205,10 @@ def extract_ingredients_hybrid(text: str, nlp_model, unique_ingredients_sorted: 
 
 
 def main():
-    dataset_path = os.path.join("..", "datasets", "RAW_recipes.csv")
-    model_dir = os.path.join("..", "models", "ner_ingredients")
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    dataset_dir = os.path.join(base_dir, "datasets")
+    dataset_path = os.path.join(dataset_dir, "df_recetas_processed.csv")
+    model_dir = os.path.join(base_dir, "models", "ner")
     os.makedirs(model_dir, exist_ok=True)
 
     if not os.path.exists(dataset_path):
@@ -134,7 +218,7 @@ def main():
     print(f"Dataset cargado: {len(df)} filas")
 
     all_ingredients = []
-    for ing in df["ingredients"].dropna():
+    for ing in df["Ingredients"].dropna():
         item_list = to_list(ing)
         all_ingredients.extend(str(i).strip().lower() for i in item_list if str(i).strip())
 
@@ -144,10 +228,11 @@ def main():
     train_data = build_train_data(df)
     print(f"Entradas de entrenamiento generadas: {len(train_data)}")
 
-    nlp_model = train_ner_model(train_data, n_iter=8)
+    model, tokenizer = train_ner_model(train_data, n_iter=8)
 
-    nlp_model.to_disk(model_dir)
-    print(f"Modelo NER guardado en: {model_dir}")
+    model.save_pretrained(os.path.join(model_dir, "best_ner_model"))
+    tokenizer.save_pretrained(os.path.join(model_dir, "best_ner_model"))
+    print(f"Modelo NER guardado en: {os.path.join(model_dir, 'best_ner_model')}")
 
     unique_path = os.path.join(model_dir, "unique_ingredients.txt")
     with open(unique_path, "w", encoding="utf-8") as f:
@@ -164,7 +249,7 @@ def main():
     unique_ingredients_sorted = sorted(unique_ingredients, key=len, reverse=True)
     for line in default_test_lines:
         print(line)
-        print(extract_ingredients_hybrid(line, nlp_model, unique_ingredients_sorted))
+        print(extract_ingredients_hybrid(line, model, tokenizer, unique_ingredients_sorted))
 
 
 if __name__ == "__main__":
