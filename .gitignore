@@ -8,7 +8,6 @@ __pycache__/
 .env.*
 .DS_Store
 *.sqlite
-models/
 *.h5
 *.pt
 
