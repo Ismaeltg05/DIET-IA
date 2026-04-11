@@ -1,0 +1,37 @@
+import torch
+from transformers import BertTokenizer, BertForSequenceClassification
+
+ALL_INGREDIENTS = ["tomato", "lettuce", "oil", "chicken"]
+ALL_TAGS = ["low_calorie", "high_protein"]
+ALL_LABELS = ALL_INGREDIENTS + ALL_TAGS
+
+tokenizer = BertTokenizer.from_pretrained("model")
+model = BertForSequenceClassification.from_pretrained("model")
+
+model.eval()
+
+def predict(text):
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+    
+    with torch.no_grad():
+        outputs = model(**inputs)
+
+    probs = torch.sigmoid(outputs.logits)[0]
+
+    result = {
+        "ingredients": [],
+        "tags": []
+    }
+
+    for i, p in enumerate(probs):
+        if p > 0.5:
+            label = ALL_LABELS[i]
+            if i < len(ALL_INGREDIENTS):
+                result["ingredients"].append(label)
+            else:
+                result["tags"].append(label)
+
+    return result
+
+
+print(predict("I want something with tomato and low calories"))

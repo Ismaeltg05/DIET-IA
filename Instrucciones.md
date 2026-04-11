@@ -28,9 +28,9 @@ pip install pandas numpy scikit-learn matplotlib sentence-transformers joblib tr
 
 4. Archivos de entrenamiento generados:
 
-`python/train_recommender.py` y `python/ner_ingredients_knn.py`
+`python/train_recommender.py` y `python/ner_Salmeron.py`
 
-5. Ejecutar entrenamiento KNN semántico:
+1. Ejecutar entrenamiento KNN semántico:
 
 ```bash
 python ./python/rain_recommender.py
@@ -39,7 +39,7 @@ python ./python/rain_recommender.py
 6. Ejecutar entrenamiento NER de ingredientes:
 
 ```bash
-python ./python/ner_ingredients_knn.py
+python ./python/ner_Salmeron.py
 ```
 
 6. Artefactos generados (carpeta `models/`):
