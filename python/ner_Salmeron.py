@@ -9,7 +9,7 @@ from torch.optim import AdamW
 # -------- CONFIG --------
 MODEL_NAME = "bert-base-uncased"
 MAX_LEN = 128
-BATCH_SIZE = 8
+BATCH_SIZE = 32
 EPOCHS = 3
 LR = 2e-5
 
@@ -24,10 +24,10 @@ print("🚀 Cargando datasets...")
 
 # -------- LOAD LABELS --------
 with open(os.path.join(DATASET_DIR, "ALL_INGREDIENTS.json")) as f:
-    ALL_INGREDIENTS = [ing.lower() for ing in json.load(f)]
+    ALL_INGREDIENTS = [x.lower() for x in json.load(f)]
 
 with open(os.path.join(DATASET_DIR, "ALL_TAGS.json")) as f:
-    ALL_TAGS = [tag.lower() for tag in json.load(f)]
+    ALL_TAGS = [x.lower() for x in json.load(f)]
 
 ALL_LABELS = ALL_INGREDIENTS + ALL_TAGS
 NUM_LABELS = len(ALL_LABELS)
@@ -42,62 +42,66 @@ with open(os.path.join(DATASET_DIR, "datasetNER.json")) as f:
 print(f"📦 Dataset cargado: {len(data)} ejemplos")
 
 # -------- CLEAN DATA --------
+texts = []
+labels_list = []
+
 for item in data:
-    item["text"] = item["text"].lower()
-    item["ingredients"] = [i.lower() for i in item["ingredients"]]
-    item["tags"] = [t.lower() for t in item["tags"]]
+    texts.append(item["text"].lower())
 
-# -------- DATASET --------
-class RecipeDataset(Dataset):
-    def __init__(self, data, tokenizer):
-        self.data = data
-        self.tokenizer = tokenizer
+    labels = [0] * NUM_LABELS
 
-    def encode_labels(self, item):
-        labels = [0] * NUM_LABELS
+    for ing in item["ingredients"]:
+        ing = ing.lower()
+        if ing in ingredient_to_idx:
+            labels[ingredient_to_idx[ing]] = 1
 
-        for ing in item["ingredients"]:
-            if ing in ingredient_to_idx:
-                labels[ingredient_to_idx[ing]] = 1
+    for tag in item["tags"]:
+        tag = tag.lower()
+        if tag in tag_to_idx:
+            labels[len(ALL_INGREDIENTS) + tag_to_idx[tag]] = 1
 
-        for tag in item["tags"]:
-            if tag in tag_to_idx:
-                labels[len(ALL_INGREDIENTS) + tag_to_idx[tag]] = 1
-
-        return torch.tensor(labels, dtype=torch.float)
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        item = self.data[idx]
-
-        encoding = self.tokenizer(
-            item["text"],
-            truncation=True,
-            padding="max_length",
-            max_length=MAX_LEN,
-            return_tensors="pt"
-        )
-
-        labels = self.encode_labels(item)
-
-        return {
-            "input_ids": encoding["input_ids"].squeeze(),
-            "attention_mask": encoding["attention_mask"].squeeze(),
-            "labels": labels
-        }
+    labels_list.append(labels)
 
 # -------- TOKENIZER --------
 tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
 
-dataset = RecipeDataset(data, tokenizer)
+print("⚡ Tokenizando dataset (UNA SOLA VEZ)...")
+
+encodings = tokenizer(
+    texts,
+    truncation=True,
+    padding="max_length",
+    max_length=MAX_LEN
+)
+
+input_ids = torch.tensor(encodings["input_ids"])
+attention_mask = torch.tensor(encodings["attention_mask"])
+labels_tensor = torch.tensor(labels_list, dtype=torch.float)
+
+# -------- DATASET OPTIMIZADO --------
+class RecipeDataset(Dataset):
+    def __init__(self, input_ids, attention_mask, labels):
+        self.input_ids = input_ids
+        self.attention_mask = attention_mask
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.input_ids)
+
+    def __getitem__(self, idx):
+        return {
+            "input_ids": self.input_ids[idx],
+            "attention_mask": self.attention_mask[idx],
+            "labels": self.labels[idx]
+        }
+
+dataset = RecipeDataset(input_ids, attention_mask, labels_tensor)
 
 loader = DataLoader(
     dataset,
     batch_size=BATCH_SIZE,
     shuffle=True,
-    num_workers=0   # 🔥 Windows safe
+    num_workers=0
 )
 
 # -------- MODEL --------
@@ -168,8 +172,7 @@ for epoch in range(EPOCHS):
     # -------- SAVE BEST MODEL --------
     if avg_loss < best_loss:
         best_loss = avg_loss
-
-        print("💾 Nuevo mejor modelo encontrado, guardando...")
+        print("💾 Mejor modelo guardado")
 
         model.save_pretrained(MODEL_DIR)
         tokenizer.save_pretrained(MODEL_DIR)
@@ -188,4 +191,4 @@ graph_path = os.path.join(MODEL_DIR, "training.png")
 plt.savefig(graph_path)
 
 print(f"📊 Gráfico guardado en: {graph_path}")
-print("✅ Mejor modelo guardado en:", MODEL_DIR)
+print("✅ Entrenamiento terminado. Mejor modelo guardado en:", MODEL_DIR)
