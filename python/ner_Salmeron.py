@@ -3,7 +3,8 @@ import os
 import torch
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
-from transformers import BertTokenizer, BertForSequenceClassification, AdamW
+from transformers import BertTokenizer, BertForSequenceClassification
+from torch.optim import AdamW
 
 # -------- CONFIG --------
 MODEL_NAME = "bert-base-uncased"
@@ -12,13 +13,14 @@ BATCH_SIZE = 8
 EPOCHS = 3
 LR = 2e-5
 
-# -------- PATHS (ROBUSTOS) --------
+# -------- PATHS --------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATASET_DIR = os.path.join(BASE_DIR, "../datasets")
 MODEL_DIR = os.path.join(BASE_DIR, "../models/ner")
 
-# -------- CREATE DIR --------
 os.makedirs(MODEL_DIR, exist_ok=True)
+
+print("🚀 Cargando datasets...")
 
 # -------- LOAD LABELS --------
 with open(os.path.join(DATASET_DIR, "ALL_INGREDIENTS.json")) as f:
@@ -30,13 +32,14 @@ with open(os.path.join(DATASET_DIR, "ALL_TAGS.json")) as f:
 ALL_LABELS = ALL_INGREDIENTS + ALL_TAGS
 NUM_LABELS = len(ALL_LABELS)
 
-# Índices rápidos
 ingredient_to_idx = {ing: i for i, ing in enumerate(ALL_INGREDIENTS)}
 tag_to_idx = {tag: i for i, tag in enumerate(ALL_TAGS)}
 
 # -------- LOAD DATA --------
 with open(os.path.join(DATASET_DIR, "datasetNER.json")) as f:
     data = json.load(f)
+
+print(f"📦 Dataset cargado: {len(data)} ejemplos")
 
 # -------- CLEAN DATA --------
 for item in data:
@@ -89,7 +92,13 @@ class RecipeDataset(Dataset):
 tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
 
 dataset = RecipeDataset(data, tokenizer)
-loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
+
+loader = DataLoader(
+    dataset,
+    batch_size=BATCH_SIZE,
+    shuffle=True,
+    num_workers=0   # 🔥 Windows safe
+)
 
 # -------- MODEL --------
 model = BertForSequenceClassification.from_pretrained(
@@ -108,14 +117,22 @@ loss_fn = torch.nn.BCEWithLogitsLoss()
 loss_history = []
 accuracy_history = []
 
+best_loss = float("inf")
+
 model.train()
+
+print("🔥 INICIANDO ENTRENAMIENTO...\n")
 
 for epoch in range(EPOCHS):
     total_loss = 0
     correct = 0
     total = 0
 
-    for batch in loader:
+    for i, batch in enumerate(loader):
+
+        if i % 50 == 0:
+            print(f"Batch {i}/{len(loader)}")
+
         input_ids = batch["input_ids"].to(device)
         attention_mask = batch["attention_mask"].to(device)
         labels = batch["labels"].to(device)
@@ -134,7 +151,6 @@ for epoch in range(EPOCHS):
 
         total_loss += loss.item()
 
-        # -------- ACCURACY --------
         preds = (torch.sigmoid(logits) > 0.5).float()
         correct += (preds == labels).sum().item()
         total += labels.numel()
@@ -145,11 +161,18 @@ for epoch in range(EPOCHS):
     loss_history.append(avg_loss)
     accuracy_history.append(accuracy)
 
-    print(f"Epoch {epoch+1} - Loss: {avg_loss:.4f} - Acc: {accuracy:.4f}")
+    print(f"\n📊 Epoch {epoch+1}")
+    print(f"Loss: {avg_loss:.4f}")
+    print(f"Acc:  {accuracy:.4f}")
 
-# -------- SAVE MODEL --------
-model.save_pretrained(MODEL_DIR)
-tokenizer.save_pretrained(MODEL_DIR)
+    # -------- SAVE BEST MODEL --------
+    if avg_loss < best_loss:
+        best_loss = avg_loss
+
+        print("💾 Nuevo mejor modelo encontrado, guardando...")
+
+        model.save_pretrained(MODEL_DIR)
+        tokenizer.save_pretrained(MODEL_DIR)
 
 # -------- SAVE GRAPH --------
 plt.figure()
@@ -165,4 +188,4 @@ graph_path = os.path.join(MODEL_DIR, "training.png")
 plt.savefig(graph_path)
 
 print(f"📊 Gráfico guardado en: {graph_path}")
-print("✅ Modelo guardado en:", MODEL_DIR)
+print("✅ Mejor modelo guardado en:", MODEL_DIR)
