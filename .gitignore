@@ -3,10 +3,10 @@ __pycache__/
 *.pyo
 *.pyd
 *.egg-info/
+.venv/
 .DS_Store
 *.sqlite
 *.h5
 *.pt
-
 # Optional: ignorar la carpeta .git/lfs object because it's local
 .git/lfs/objects/
