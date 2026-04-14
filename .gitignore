@@ -3,7 +3,13 @@ __pycache__/
 *.pyo
 *.pyd
 *.egg-info/
+# Python virtual environments
 .venv/
+venv/
+python/venv/
+python/.venv/
+**/.venv/
+**/venv/
 .DS_Store
 *.sqlite
 *.h5
