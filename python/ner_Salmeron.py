@@ -1,194 +1,221 @@
 import json
 import os
+import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
-from transformers import BertTokenizer, BertForSequenceClassification
+from transformers import AutoTokenizer, BertForTokenClassification, get_linear_schedule_with_warmup
 from torch.optim import AdamW
+from sklearn.metrics import f1_score
+
 
 # -------- CONFIG --------
 MODEL_NAME = "bert-base-uncased"
 MAX_LEN = 128
-BATCH_SIZE = 32
-EPOCHS = 3
-LR = 2e-5
+BATCH_SIZE = 16
+EPOCHS = 5
+LR = 3e-5
+
 
 # -------- PATHS --------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATASET_DIR = os.path.join(BASE_DIR, "../datasets")
 MODEL_DIR = os.path.join(BASE_DIR, "../models/ner")
-
 os.makedirs(MODEL_DIR, exist_ok=True)
 
-print("🚀 Cargando datasets...")
-
-# -------- LOAD LABELS --------
-with open(os.path.join(DATASET_DIR, "ALL_INGREDIENTS.json")) as f:
-    ALL_INGREDIENTS = [x.lower() for x in json.load(f)]
-
-with open(os.path.join(DATASET_DIR, "ALL_TAGS.json")) as f:
-    ALL_TAGS = [x.lower() for x in json.load(f)]
-
-ALL_LABELS = ALL_INGREDIENTS + ALL_TAGS
-NUM_LABELS = len(ALL_LABELS)
-
-ingredient_to_idx = {ing: i for i, ing in enumerate(ALL_INGREDIENTS)}
-tag_to_idx = {tag: i for i, tag in enumerate(ALL_TAGS)}
-
-# -------- LOAD DATA --------
-with open(os.path.join(DATASET_DIR, "datasetNER.json")) as f:
-    data = json.load(f)
-
-print(f"📦 Dataset cargado: {len(data)} ejemplos")
-
-# -------- CLEAN DATA --------
-texts = []
-labels_list = []
-
-for item in data:
-    texts.append(item["text"].lower())
-
-    labels = [0] * NUM_LABELS
-
-    for ing in item["ingredients"]:
-        ing = ing.lower()
-        if ing in ingredient_to_idx:
-            labels[ingredient_to_idx[ing]] = 1
-
-    for tag in item["tags"]:
-        tag = tag.lower()
-        if tag in tag_to_idx:
-            labels[len(ALL_INGREDIENTS) + tag_to_idx[tag]] = 1
-
-    labels_list.append(labels)
-
-# -------- TOKENIZER --------
-tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
-
-print("⚡ Tokenizando dataset (UNA SOLA VEZ)...")
-
-encodings = tokenizer(
-    texts,
-    truncation=True,
-    padding="max_length",
-    max_length=MAX_LEN
-)
-
-input_ids = torch.tensor(encodings["input_ids"])
-attention_mask = torch.tensor(encodings["attention_mask"])
-labels_tensor = torch.tensor(labels_list, dtype=torch.float)
-
-# -------- DATASET OPTIMIZADO --------
-class RecipeDataset(Dataset):
-    def __init__(self, input_ids, attention_mask, labels):
-        self.input_ids = input_ids
-        self.attention_mask = attention_mask
-        self.labels = labels
-
-    def __len__(self):
-        return len(self.input_ids)
-
-    def __getitem__(self, idx):
-        return {
-            "input_ids": self.input_ids[idx],
-            "attention_mask": self.attention_mask[idx],
-            "labels": self.labels[idx]
-        }
-
-dataset = RecipeDataset(input_ids, attention_mask, labels_tensor)
-
-loader = DataLoader(
-    dataset,
-    batch_size=BATCH_SIZE,
-    shuffle=True,
-    num_workers=0
-)
-
-# -------- MODEL --------
-model = BertForSequenceClassification.from_pretrained(
-    MODEL_NAME,
-    num_labels=NUM_LABELS,
-    problem_type="multi_label_classification"
-)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model.to(device)
+print(f"Usando dispositivo: {device}")
 
-optimizer = AdamW(model.parameters(), lr=LR)
-loss_fn = torch.nn.BCEWithLogitsLoss()
 
-# -------- TRAIN --------
-loss_history = []
-accuracy_history = []
+def load_split(filename):
+    with open(os.path.join(DATASET_DIR, filename), encoding="utf-8") as f:
+        return json.load(f)
 
-best_loss = float("inf")
 
-model.train()
+def collect_label_set(*splits):
+    labels = set()
+    for split in splits:
+        for item in split:
+            labels.update(item["labels"])
+    # For BIO, keep O first and sort the rest for stable ids.
+    ordered = ["O"] + sorted([x for x in labels if x != "O"])
+    return ordered
 
-print("🔥 INICIANDO ENTRENAMIENTO...\n")
 
-for epoch in range(EPOCHS):
-    total_loss = 0
-    correct = 0
-    total = 0
+class NERDataset(Dataset):
+    def __init__(self, data, tokenizer, label_to_id):
+        self.data = data
+        self.tokenizer = tokenizer
+        self.label_to_id = label_to_id
 
-    for i, batch in enumerate(loader):
+    def __len__(self):
+        return len(self.data)
 
-        if i % 50 == 0:
-            print(f"Batch {i}/{len(loader)}")
+    def __getitem__(self, idx):
+        sample = self.data[idx]
+        words = [w.lower() for w in sample["tokens"]]
+        labels = sample["labels"]
 
-        input_ids = batch["input_ids"].to(device)
-        attention_mask = batch["attention_mask"].to(device)
-        labels = batch["labels"].to(device)
-
-        outputs = model(
-            input_ids=input_ids,
-            attention_mask=attention_mask
+        enc = self.tokenizer(
+            words,
+            is_split_into_words=True,
+            truncation=True,
+            padding="max_length",
+            max_length=MAX_LEN,
+            return_tensors="pt"
         )
 
-        logits = outputs.logits
-        loss = loss_fn(logits, labels)
+        word_ids = enc.word_ids(batch_index=0)
+        aligned_labels = []
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        for word_id in word_ids:
+            if word_id is None:
+                aligned_labels.append(-100)
+            else:
+                aligned_labels.append(self.label_to_id[labels[word_id]])
 
-        total_loss += loss.item()
+        return {
+            "input_ids": enc["input_ids"].squeeze(0),
+            "attention_mask": enc["attention_mask"].squeeze(0),
+            "labels": torch.tensor(aligned_labels, dtype=torch.long)
+        }
 
-        preds = (torch.sigmoid(logits) > 0.5).float()
-        correct += (preds == labels).sum().item()
-        total += labels.numel()
 
-    avg_loss = total_loss / len(loader)
-    accuracy = correct / total
+def build_class_weights(train_split, label_to_id):
+    counts = np.zeros(len(label_to_id), dtype=np.float64)
 
-    loss_history.append(avg_loss)
-    accuracy_history.append(accuracy)
+    for sample in train_split:
+        for label in sample["labels"]:
+            counts[label_to_id[label]] += 1.0
 
-    print(f"\n📊 Epoch {epoch+1}")
-    print(f"Loss: {avg_loss:.4f}")
-    print(f"Acc:  {accuracy:.4f}")
+    counts[counts == 0] = 1.0
+    weights = counts.sum() / (len(counts) * counts)
 
-    # -------- SAVE BEST MODEL --------
-    if avg_loss < best_loss:
-        best_loss = avg_loss
-        print("💾 Mejor modelo guardado")
+    # Clamp to avoid unstable very large weights on very rare labels.
+    weights = np.clip(weights, 0.5, 8.0)
+    return torch.tensor(weights, dtype=torch.float32, device=device)
 
-        model.save_pretrained(MODEL_DIR)
-        tokenizer.save_pretrained(MODEL_DIR)
 
-# -------- SAVE GRAPH --------
-plt.figure()
-plt.plot(loss_history, label="Loss")
-plt.plot(accuracy_history, label="Accuracy")
+def evaluate(model, loader):
+    model.eval()
+    y_true = []
+    y_pred = []
+    total_loss = 0.0
 
-plt.xlabel("Epoch")
-plt.ylabel("Value")
-plt.title("Training Metrics")
-plt.legend()
+    with torch.no_grad():
+        for batch in loader:
+            input_ids = batch["input_ids"].to(device)
+            attention_mask = batch["attention_mask"].to(device)
+            labels = batch["labels"].to(device)
 
-graph_path = os.path.join(MODEL_DIR, "training.png")
-plt.savefig(graph_path)
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+            logits = outputs.logits
+            loss = loss_fn(logits.view(-1, logits.shape[-1]), labels.view(-1))
+            total_loss += loss.item()
 
-print(f"📊 Gráfico guardado en: {graph_path}")
-print("✅ Entrenamiento terminado. Mejor modelo guardado en:", MODEL_DIR)
+            pred_ids = torch.argmax(logits, dim=-1)
+            mask = labels != -100
+
+            y_true.extend(labels[mask].cpu().numpy().tolist())
+            y_pred.extend(pred_ids[mask].cpu().numpy().tolist())
+
+    macro_f1 = f1_score(y_true, y_pred, average="macro") if y_true else 0.0
+    return total_loss / max(len(loader), 1), macro_f1
+
+
+if __name__ == "__main__":
+    train_data = load_split("train.json")
+    val_data = load_split("val.json")
+
+    labels = collect_label_set(train_data, val_data)
+    label_to_id = {label: i for i, label in enumerate(labels)}
+    id_to_label = {i: label for label, i in label_to_id.items()}
+
+    print(f"Total ejemplos: train={len(train_data)} val={len(val_data)}")
+    print(f"Etiquetas: {labels}")
+
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, use_fast=True)
+
+    train_dataset = NERDataset(train_data, tokenizer, label_to_id)
+    val_dataset = NERDataset(val_data, tokenizer, label_to_id)
+
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+
+    model = BertForTokenClassification.from_pretrained(
+        MODEL_NAME,
+        num_labels=len(labels),
+        id2label=id_to_label,
+        label2id=label_to_id
+    ).to(device)
+
+    optimizer = AdamW(model.parameters(), lr=LR)
+    total_steps = len(train_loader) * EPOCHS
+    scheduler = get_linear_schedule_with_warmup(
+        optimizer,
+        num_warmup_steps=0,
+        num_training_steps=total_steps
+    )
+
+    class_weights = build_class_weights(train_data, label_to_id)
+    loss_fn = torch.nn.CrossEntropyLoss(weight=class_weights, ignore_index=-100)
+
+    loss_history = []
+    f1_history = []
+    best_val_f1 = -1.0
+
+    for epoch in range(EPOCHS):
+        model.train()
+        epoch_loss = 0.0
+
+        for batch in train_loader:
+            input_ids = batch["input_ids"].to(device)
+            attention_mask = batch["attention_mask"].to(device)
+            labels_batch = batch["labels"].to(device)
+
+            optimizer.zero_grad()
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+            logits = outputs.logits
+            loss = loss_fn(logits.view(-1, logits.shape[-1]), labels_batch.view(-1))
+
+            loss.backward()
+            optimizer.step()
+            scheduler.step()
+
+            epoch_loss += loss.item()
+
+        train_loss = epoch_loss / max(len(train_loader), 1)
+        val_loss, val_f1 = evaluate(model, val_loader)
+
+        loss_history.append(train_loss)
+        f1_history.append(val_f1)
+
+        print(
+            f"Epoch {epoch + 1}/{EPOCHS} | "
+            f"train_loss={train_loss:.4f} | val_loss={val_loss:.4f} | val_f1={val_f1:.4f}"
+        )
+
+        if val_f1 > best_val_f1:
+            best_val_f1 = val_f1
+            model.save_pretrained(MODEL_DIR)
+            tokenizer.save_pretrained(MODEL_DIR)
+            print(f"Guardado mejor modelo en {MODEL_DIR} (val_f1={val_f1:.4f})")
+
+    plt.figure(figsize=(10, 4))
+    plt.subplot(1, 2, 1)
+    plt.plot(loss_history)
+    plt.title("Train Loss")
+    plt.xlabel("Epoch")
+
+    plt.subplot(1, 2, 2)
+    plt.plot(f1_history)
+    plt.title("Val Macro F1")
+    plt.xlabel("Epoch")
+
+    plt.tight_layout()
+    metrics_path = os.path.join(MODEL_DIR, "metrics.png")
+    plt.savefig(metrics_path)
+
+    print(f"Entrenamiento terminado. Mejor val_f1={best_val_f1:.4f}")
+    print(f"Grafica guardada en: {metrics_path}")
