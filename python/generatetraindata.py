@@ -2,20 +2,39 @@
 import json
 import re
 import os
-from collections import Counter
+import string
 
 # -------------------------
 # INGREDIENTES
 # -------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATASET_DIR = os.path.join(BASE_DIR, "../datasets")
-ingredients =  json.load(open(os.path.join(DATASET_DIR, "ALL_INGREDIENTS.json"), encoding="utf-8"))
+with open(os.path.join(DATASET_DIR, "ALL_INGREDIENTS.json"), encoding="utf-8-sig") as f:
+    ingredients = json.load(f)
+
 # -------------------------
 # CONFIG
 # -------------------------
 N_SAMPLES = 60000
-NEGATIVE_RATIO = 0.15   # 15% frases sin ingredientes (MUY IMPORTANTE)
+NEGATIVE_RATIO = 0.20
 MAX_INGS_PER_SAMPLE = 3
+
+# -------------------------
+# PALABRAS NO COMIDA (IMPORTANTES)
+# -------------------------
+COMMON_WORDS = [
+    "and", "or", "but", "if", "the", "a",
+    "computer", "phone", "car", "music",
+    "run", "walk", "think", "know",
+    "blue", "fast", "big", "happy"
+]
+
+# -------------------------
+# GENERADOR DE TOKENS RANDOM (CLAVE)
+# -------------------------
+def random_token():
+    length = random.randint(3, 10)
+    return ''.join(random.choices(string.ascii_lowercase, k=length))
 
 # -------------------------
 # NOISE REAL HUMANO
@@ -87,7 +106,34 @@ def maybe_slang(text):
     return text
 
 # -------------------------
-# BIO LABELING (ROBUSTO)
+# 🔥 HARD NEGATIVE (CLAVE)
+# -------------------------
+def generate_hard_negative():
+    k = random.randint(5, 10)
+    tokens = []
+
+    for _ in range(k):
+        if random.random() < 0.5:
+            tokens.append(random.choice(COMMON_WORDS))
+        else:
+            tokens.append(random_token())
+
+    return {
+        "tokens": tokens,
+        "labels": ["O"] * len(tokens)
+    }
+
+# -------------------------
+# 🔥 INYECTAR TOKENS DESCONOCIDOS
+# -------------------------
+def inject_unknowns(tokens):
+    if random.random() < 0.5:
+        pos = random.randint(0, len(tokens))
+        tokens.insert(pos, random_token())
+    return tokens
+
+# -------------------------
+# BIO LABELING
 # -------------------------
 def bio_tag(tokens, ings):
     labels = ["O"] * len(tokens)
@@ -109,31 +155,36 @@ def bio_tag(tokens, ings):
 def generate_example():
     use_ingredients = random.random() > NEGATIVE_RATIO
 
-    # NEGATIVE SAMPLE (IMPORTANTE PARA F1 REAL)
+    # -------------------------
+    # NEGATIVOS
+    # -------------------------
     if not use_ingredients:
-        text = random.choice(NEGATIVE_TEMPLATES)
-        tokens = tokenize(text)
-        labels = ["O"] * len(tokens)
+        if random.random() < 0.6:
+            return generate_hard_negative()
+        else:
+            text = random.choice(NEGATIVE_TEMPLATES)
+            tokens = tokenize(text)
+            return {"tokens": tokens, "labels": ["O"] * len(tokens)}
 
-        return {
-            "tokens": tokens,
-            "labels": labels
-        }
-
-    # POSITIVE SAMPLE
+    # -------------------------
+    # POSITIVOS
+    # -------------------------
     ings = sample_ingredients()
     ing_text = format_ingredients(ings)
 
     template = random.choice(TEMPLATES)
     text = template.format(ings=ing_text)
 
-    # ruido natural
     if random.random() < 0.7:
         text = add_noise(text)
 
     text = maybe_slang(text)
 
     tokens = tokenize(text)
+
+    # 🔥 AQUÍ ESTÁ LA MAGIA
+    tokens = inject_unknowns(tokens)
+
     labels = bio_tag(tokens, ings)
 
     return {
@@ -145,32 +196,21 @@ def generate_example():
 # DATASET
 # -------------------------
 def generate_dataset(n=N_SAMPLES):
-    data = []
-
-    for _ in range(n):
-        data.append(generate_example())
-
+    data = [generate_example() for _ in range(n)]
     random.shuffle(data)
     return data
 
 # -------------------------
-# SPLIT MEJORADO
+# SPLIT
 # -------------------------
 def split(data):
-    # shuffle ya hecho
     n = len(data)
-
     train_end = int(0.8 * n)
     val_end = int(0.9 * n)
-
-    train = data[:train_end]
-    val = data[train_end:val_end]
-    test = data[val_end:]
-
-    return train, val, test
+    return data[:train_end], data[train_end:val_end], data[val_end:]
 
 # -------------------------
-# VALIDACIÓN RÁPIDA
+# CHECK
 # -------------------------
 def check_dataset(data):
     empty = sum(1 for d in data if all(l == "O" for l in d["labels"]))
