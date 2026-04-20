@@ -24,6 +24,7 @@ source .venv/bin/activate  # Linux/Mac
 ```bash
 pip install --upgrade pip
 pip install pandas numpy scikit-learn matplotlib sentence-transformers joblib transformers torch datasets accelerate flask
+pip install seqeval
 ```
 
 4. Archivos de entrenamiento generados:
