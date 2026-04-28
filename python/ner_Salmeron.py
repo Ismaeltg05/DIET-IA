@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
@@ -14,7 +15,7 @@ from seqeval.metrics import f1_score as seq_f1, classification_report
 MODEL_NAME  = "bert-base-uncased"
 MAX_LEN     = 128
 BATCH_SIZE  = 32        # larger batch → more stable gradients
-EPOCHS      = 10
+EPOCHS      = 5
 LR          = 2e-5      # slightly lower — safer for BERT fine-tuning
 WARMUP_RATIO = 0.1      # 10% of total steps used for warmup
 GRAD_CLIP   = 1.0       # max gradient norm
@@ -28,7 +29,21 @@ DATASET_DIR = os.path.join(BASE_DIR, "../datasets")
 MODEL_DIR   = os.path.join(BASE_DIR, "../models/ner")
 os.makedirs(MODEL_DIR, exist_ok=True)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def resolve_device():
+    force_cuda = os.getenv("FORCE_CUDA", "0") == "1"
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if force_cuda:
+        raise RuntimeError(
+            "FORCE_CUDA=1 pero CUDA no esta disponible. "
+            f"Python={sys.executable} | torch={torch.__version__} | cuda={torch.version.cuda}"
+        )
+    return torch.device("cpu")
+
+
+device = resolve_device()
+print(f"Python: {sys.executable}")
+print(f"Torch: {torch.__version__} | CUDA toolkit: {torch.version.cuda}")
 print(f"Device: {device}")
 
 
@@ -170,8 +185,9 @@ if __name__ == "__main__":
     train_dataset = NERDataset(train_data, tokenizer, label_to_id)
     val_dataset   = NERDataset(val_data,   tokenizer, label_to_id)
 
-    train_loader  = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True,  num_workers=2, pin_memory=True)
-    val_loader    = DataLoader(val_dataset,   batch_size=BATCH_SIZE, shuffle=False, num_workers=2, pin_memory=True)
+    pin_memory = device.type == "cuda"
+    train_loader  = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True,  num_workers=2, pin_memory=pin_memory)
+    val_loader    = DataLoader(val_dataset,   batch_size=BATCH_SIZE, shuffle=False, num_workers=2, pin_memory=pin_memory)
 
     # --- Model ---
     model = BertForTokenClassification.from_pretrained(
