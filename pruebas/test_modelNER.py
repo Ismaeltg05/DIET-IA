@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import torch
 from transformers import AutoTokenizer, BertForTokenClassification
 
@@ -11,10 +12,24 @@ MODEL_DIR  = os.path.join(BASE_DIR, "../models/ner")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR, use_fast=True)
 model     = BertForTokenClassification.from_pretrained(MODEL_DIR)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def resolve_device():
+    force_cuda = os.getenv("FORCE_CUDA", "0") == "1"
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if force_cuda:
+        raise RuntimeError(
+            "FORCE_CUDA=1 pero CUDA no esta disponible. "
+            f"Python={sys.executable} | torch={torch.__version__} | cuda={torch.version.cuda}"
+        )
+    return torch.device("cpu")
+
+
+device = resolve_device()
 model.to(device)
 model.eval()
 
+print("Python:", sys.executable)
+print("Torch:", torch.__version__, "| CUDA toolkit:", torch.version.cuda)
 print("🔥 MODELO CARGADO EN:", device)
 
 id2label = {int(k): v for k, v in model.config.id2label.items()}
