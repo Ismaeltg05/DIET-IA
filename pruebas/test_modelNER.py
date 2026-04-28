@@ -1,8 +1,15 @@
 import os
 import re
 import sys
+import json
 import torch
 from transformers import AutoTokenizer, BertForTokenClassification
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from python.recipe_similarity_ai import RecipeSimilarityAI, ingredients_from_ner_output
 
 # -------- PATHS --------
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
@@ -27,6 +34,8 @@ def resolve_device():
 device = resolve_device()
 model.to(device)
 model.eval()
+
+recipe_ai = RecipeSimilarityAI()
 
 print("Python:", sys.executable)
 print("Torch:", torch.__version__, "| CUDA toolkit:", torch.version.cuda)
@@ -140,5 +149,32 @@ if __name__ == "__main__":
             print("  -", i)
         if not ings:
             print("  (ninguno)")
+        else:
+            detected_ingredients = ingredients_from_ner_output(ings)
+            best_recipe = recipe_ai.recommend_best_recipe(detected_ingredients)
+
+            print("\n🍽️ MEJOR RECETA ENCONTRADA:")
+            print("  Título:", best_recipe["Title"])
+            print(f"  Similitud: {best_recipe['similarity_percent']:.2f}%")
+            print("  Ingredientes detectados:", ", ".join(best_recipe["Ingredients"]))
+            print("  Tags:", ", ".join(best_recipe["Tags"]))
+            print("  Indicadores dietéticos:")
+            recipe_meta = best_recipe["recipe"]
+            print(f"    - Contiene lactosa: {recipe_meta.get('contains_lactose')}")
+            print(f"    - Contiene gluten: {recipe_meta.get('contains_gluten')}")
+            print(f"    - Bajo en calorías: {recipe_meta.get('low_calories')}")
+            print(f"    - Bajo en grasa: {recipe_meta.get('low_fat')}")
+            print(f"    - Vegetariano: {recipe_meta.get('is_vegetarian')}")
+            print("\n  Pasos para elaborar la receta:")
+            for step_i, step in enumerate(recipe_meta.get('Steps', []), start=1):
+                print(f"    {step_i}. {step}")
+            print("\n  Receta completa (resumen):")
+            print(json.dumps({
+                "Title": recipe_meta.get("Title"),
+                "IngredientsList": recipe_meta.get("IngredientsList"),
+                "Tags": recipe_meta.get("Tags"),
+                "Calories": recipe_meta.get("Calories"),
+                "Instructions": recipe_meta.get("Instructions"),
+            }, ensure_ascii=False, indent=2))
 
         print("\n" + "-" * 50 + "\n")

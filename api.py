@@ -57,8 +57,24 @@ embedder = SentenceTransformer(embedder_dir)
 nn_path = os.path.join(base_dir, "models", "best_nn_model.pkl")
 nn = joblib.load(nn_path)
 
-train_df_path = os.path.join(base_dir, "models", "df_recetas_processed.csv")
-train_df = pd.read_csv(train_df_path)
+raw_recipes_path = os.path.join(base_dir, "datasets", "RAW_recipes.csv")
+if not os.path.exists(raw_recipes_path):
+    raise FileNotFoundError(f"No se encontró RAW_recipes.csv en {os.path.join(base_dir, 'datasets')}")
+
+train_df = pd.read_csv(raw_recipes_path)
+train_df = train_df.rename(columns={
+    'nvmname': 'Title',
+    'name': 'Title',
+    'ingredients': 'Ingredients',
+    'steps': 'Instructions',
+    'tags': 'Category',
+})
+train_df = train_df.dropna(subset=['Title', 'Ingredients', 'Instructions'])
+train_df['Title'] = train_df['Title'].astype(str)
+train_df['Ingredients'] = train_df['Ingredients'].apply(lambda value: ' '.join(to_list(value)))
+train_df['Instructions'] = train_df['Instructions'].apply(lambda value: ' | '.join(to_list(value)))
+train_df['Features'] = train_df['Ingredients']
+train_df['Tags'] = train_df['Category'].apply(lambda value: extract_recipe_tags(value, tag_lookup))
 
 app = Flask(__name__)
 

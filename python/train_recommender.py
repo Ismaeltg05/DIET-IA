@@ -90,17 +90,9 @@ def plot_history(history, output_path):
 def main():
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     dataset_dir = os.path.join(base_dir, "datasets")
-    possible_datasets = ["recetas.csv", "RAW_recipes.csv"]
-    dataset_path = None
-
-    for name in possible_datasets:
-        candidate = os.path.join(dataset_dir, name)
-        if os.path.exists(candidate):
-            dataset_path = candidate
-            break
-
-    if dataset_path is None:
-        raise FileNotFoundError(f"No se encontró dataset en {dataset_dir}. Buscado: {possible_datasets}")
+    dataset_path = os.path.join(dataset_dir, "RAW_recipes.csv")
+    if not os.path.exists(dataset_path):
+        raise FileNotFoundError(f"No se encontró RAW_recipes.csv en {dataset_dir}")
 
     processed_path = os.path.join(dataset_dir, "df_recetas_processed.csv")
     model_dir = os.path.join(base_dir, "models")
