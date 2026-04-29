@@ -1,8 +1,0 @@
-/* global.css */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Si usas Prettier con Tailwind, puedes añadir la referencia de tipos */
-@ts-ignore
-/// <reference types="nativewind/types" />

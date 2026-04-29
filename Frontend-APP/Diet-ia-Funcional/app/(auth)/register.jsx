@@ -1,12 +1,13 @@
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import '../../global.css';
 
 export default function Login() {
   const router = useRouter();
 
   return (
     <View className="flex-1 justify-center items-center p-4">
-      <Text className="text-2xl font-semibold mb-6">Iniciar sesión</Text>
+      <Text className="text-2xl font-semibold mb-6">Registrarse</Text>
 
       <TextInput
         placeholder="Correo electrónico"
@@ -22,11 +23,7 @@ export default function Login() {
         onPress={() => {/* lógica de login */}}
         className="bg-indigo-600 rounded-full px-6 py-3"
       >
-        <Text className="text-white font-semibold">Entrar</Text>
-      </Pressable>
-
-      <Pressable onPress={() => router.push('/(auth)/register')} className="mt-4">
-        <Text className="text-indigo-600">¿No tienes cuenta? Regístrate</Text>
+        <Text className="text-white font-semibold">Registrarse</Text>
       </Pressable>
     </View>
   );
