@@ -1,3 +1,6 @@
+// metro.config.js
+console.log('Metro config con NativeWind aplicado');
+
 const { getDefaultConfig } = require('expo/metro-config');
 const { withNativeWind } = require('nativewind/metro');
 

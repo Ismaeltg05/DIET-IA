@@ -1,10 +1,14 @@
+// tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ['./App.{js,ts,tsx}', './components/**/*.{js,ts,tsx}'],
-
+  content: [
+    './app/**/*.{js,jsx,ts,tsx}',   // <-- carpeta de páginas
+    './components/**/*.{js,jsx,ts,tsx}',
+  ],
   presets: [require('nativewind/preset')],
   theme: {
     extend: {},
   },
   plugins: [],
 };
+console.log('Tailwind config cargado');
