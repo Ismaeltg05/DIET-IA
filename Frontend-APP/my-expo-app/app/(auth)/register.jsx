@@ -1,5 +1,6 @@
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import '../../global.css';
 
 export default function Login() {
   const router = useRouter();
