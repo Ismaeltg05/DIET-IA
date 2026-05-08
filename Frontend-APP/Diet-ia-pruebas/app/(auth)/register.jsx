@@ -1,29 +1,77 @@
-import { View, Text, TextInput, Pressable } from 'react-native';
+import { View, Text, TextInput, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
+
+import { registerUser } from '../../services/auth';
 import '../../global.css';
 
-export default function Login() {
+export default function Register() {
   const router = useRouter();
 
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleRegister = async () => {
+    try {
+      await registerUser(name, email, password, phone);
+
+      Alert.alert('Éxito', 'Usuario creado');
+
+      router.push('/(auth)/login');
+
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
   return (
-    <View className="flex-1 justify-center items-center p-4">
-      <Text className="text-2xl font-semibold mb-6">Registrarse</Text>
+    <View className="flex-1 justify-center items-center p-4 bg-zinc-950">
+      <Text className="text-2xl font-semibold mb-6 text-white">
+        Registrarse
+      </Text>
+
+      <TextInput
+        placeholder="Nombre"
+        placeholderTextColor="#71717a"
+        value={name}
+        onChangeText={setName}
+        className="w-full border-b border-zinc-700 mb-4 p-2 text-white"
+      />
 
       <TextInput
         placeholder="Correo electrónico"
-        className="w-full border-b mb-4 p-2"
+        placeholderTextColor="#71717a"
+        value={email}
+        onChangeText={setEmail}
+        className="w-full border-b border-zinc-700 mb-4 p-2 text-white"
       />
+
+      <TextInput
+        placeholder="Teléfono (opcional)"
+        placeholderTextColor="#71717a"
+        value={phone}
+        onChangeText={setPhone}
+        className="w-full border-b border-zinc-700 mb-4 p-2 text-white"
+      />
+
       <TextInput
         placeholder="Contraseña"
+        placeholderTextColor="#71717a"
         secureTextEntry
-        className="w-full border-b mb-6 p-2"
+        value={password}
+        onChangeText={setPassword}
+        className="w-full border-b border-zinc-700 mb-6 p-2 text-white"
       />
 
       <Pressable
-        onPress={() => {/* lógica de login */}}
+        onPress={handleRegister}
         className="bg-indigo-600 rounded-full px-6 py-3"
       >
-        <Text className="text-white font-semibold">Registrarse</Text>
+        <Text className="text-white font-semibold">
+          Registrarse
+        </Text>
       </Pressable>
     </View>
   );

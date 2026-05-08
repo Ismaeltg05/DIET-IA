@@ -15,7 +15,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      MONGO_URI: mongodb://mongo:27017/miapp
+      MONGO_URI: mongodb://mongo:27017/diet-ia
     depends_on:
       - mongo
     volumes:
