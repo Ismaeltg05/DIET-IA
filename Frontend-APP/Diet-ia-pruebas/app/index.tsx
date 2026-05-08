@@ -1,18 +1,29 @@
 import { Text, View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import '../global.css';
 
 export default function Home() {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('http://localhost:3000')
-      .then(res => res.json())
-      .then(data => console.log('Conectado al backend:', data))
-      .catch(err => console.log('Error backend:', err));
+    const checkUser = async () => {
+      const userId = await AsyncStorage.getItem('userId');
+
+      if (userId) {
+        router.replace('/recipes'); // si ya está logueado
+      } else {
+        setLoading(false);
+      }
+    };
+
+    checkUser();
   }, []);
+
+  if (loading) return null;
 
   return (
     <View className="flex-1 bg-zinc-950 items-center justify-center px-6">
@@ -22,7 +33,7 @@ export default function Home() {
       </Text>
 
       <Text className="text-zinc-400 text-center mb-10">
-        Expo Router + NativeWind funcionando correctamente
+        Explora recetas o inicia sesión
       </Text>
 
       <View className="w-full max-w-sm bg-zinc-900 rounded-3xl p-6 shadow-lg">
@@ -33,26 +44,32 @@ export default function Home() {
 
         <Pressable
           onPress={() => router.push('/(auth)/login')}
-          className="bg-indigo-500 py-4 rounded-2xl active:bg-indigo-600 mb-4"
+          className="bg-indigo-500 py-4 rounded-2xl mb-4"
         >
-          <Text className="text-white text-center font-semibold text-base">
+          <Text className="text-white text-center font-semibold">
             Iniciar sesión
           </Text>
         </Pressable>
 
         <Pressable
           onPress={() => router.push('/(auth)/register')}
-          className="bg-zinc-800 py-4 rounded-2xl active:bg-zinc-700"
+          className="bg-zinc-800 py-4 rounded-2xl mb-4"
         >
-          <Text className="text-white text-center font-semibold text-base">
+          <Text className="text-white text-center font-semibold">
             Crear cuenta
           </Text>
         </Pressable>
-      </View>
 
-      <Text className="text-zinc-600 text-xs mt-10">
-        NativeWind + Expo Router
-      </Text>
+        <Pressable
+          onPress={() => router.push('/recipes')}
+          className="bg-green-600 py-4 rounded-2xl"
+        >
+          <Text className="text-white text-center font-semibold">
+            Continuar sin cuenta
+          </Text>
+        </Pressable>
+
+      </View>
 
     </View>
   );
