@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
 
-from recipe_ai import RecipeSimilarityAI
+from ai.recipe_ai import RecipeSimilarityAI
 
 app = FastAPI()
 
