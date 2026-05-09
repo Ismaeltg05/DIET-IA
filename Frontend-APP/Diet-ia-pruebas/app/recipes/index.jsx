@@ -1,11 +1,13 @@
-import { View, Text, FlatList } from 'react-native';
+import { View, Text, FlatList, Pressable } from 'react-native';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 import API_URL from '../../services/api';
 
 import '../../global.css';
 
 export default function Recipes() {
   const [recipes, setRecipes] = useState([]);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchRecipes = async () => {
@@ -27,6 +29,19 @@ export default function Recipes() {
       <Text className="text-white text-2xl font-bold mb-4">
         Recetas 🍲
       </Text>
+
+      <Pressable
+        onPress={() => router.push('/recipes/ai')}
+        className="bg-indigo-600 p-4 rounded-2xl mb-5"
+      >
+        <Text className="text-white text-center font-semibold">
+          Probar recomendador IA 🤖
+        </Text>
+
+        <Text className="text-indigo-200 text-center text-xs mt-1">
+          Escribe tus ingredientes y encuentra una receta
+        </Text>
+      </Pressable>
 
       <FlatList
         data={recipes}

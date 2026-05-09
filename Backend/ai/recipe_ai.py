@@ -3,7 +3,6 @@ import re
 import math
 import os
 from typing import Iterable, List, Optional, Sequence
-import math
 
 import numpy as np
 import pandas as pd
@@ -48,68 +47,48 @@ def _split_pipe_values(value) -> List[str]:
 
 
 def _split_ingredients_text(value: str) -> List[str]:
-    """Try to split an ingredients block into individual ingredient lines.
-
-    Handles pipes, newlines, and commas (when they look like separators).
-    """
     if value is None:
         return []
     text = str(value).strip()
     if not text:
         return []
 
-    # First split by pipe or newline
     if "|" in text:
-        parts = [p.strip() for p in text.split("|") if p.strip()]
-        return parts
+        return [p.strip() for p in text.split("|") if p.strip()]
     if "\n" in text:
-        parts = [p.strip() for p in text.splitlines() if p.strip()]
-        return parts
+        return [p.strip() for p in text.splitlines() if p.strip()]
 
-    # Fallback: split by commas but avoid splitting long sentences that are likely instructions
-    # If there's a pattern like '1 cup' or measurement, it's likely an ingredient list using commas
     if re.search(r"\d+\s*(cup|tablespoon|teaspoon|tbsp|tsp|ounce|oz|gram|g|kg|ml|liter|l)", text, re.IGNORECASE):
-        parts = [p.strip() for p in re.split(r",\s*(?=[^,])", text) if p.strip()]
-        return parts
+        return [p.strip() for p in re.split(r",\s*(?=[^,])", text) if p.strip()]
 
-    # Last resort: return the whole text as single item
     return [text]
 
 
 def _split_into_steps(text: str) -> List[str]:
-    """Split instruction text into ordered steps.
-
-    Tries, in order: pipe, numbered lists (1., 1)), newlines, sentence splitting.
-    """
     if not text:
         return []
     s = str(text).strip()
 
-    # 1) Pipe-separated
     if "|" in s:
         parts = [p.strip() for p in s.split("|") if p.strip()]
         if len(parts) > 1:
             return parts
 
-    # 2) Numbered steps like '1. Do this 2. Do that' or '1) ...'
     numbered = re.split(r"\n\s*\d+[\.)]\s+", "\n" + s)
     numbered = [p.strip() for p in numbered if p.strip()]
     if len(numbered) > 1:
         return numbered
 
-    # 3) Newlines
     if "\n" in s:
         parts = [p.strip() for p in s.splitlines() if p.strip()]
         if len(parts) > 1:
             return parts
 
-    # 4) Split into sentences by punctuation, keep reasonably long sentences as steps
     sentences = re.split(r"(?<=[.!?])\s+", s)
     sentences = [p.strip() for p in sentences if len(p.strip()) > 10]
     if len(sentences) > 1:
         return sentences
 
-    # otherwise return as single-step (trimmed)
     return [s]
 
 
@@ -130,14 +109,13 @@ class RecipeSimilarityAI:
 
     def _resolve_dataset_path(self) -> str:
         processed_candidates = [
-            os.path.join(self.model_dir, "df_recetas_processed.csv"),
-            os.path.join(self.base_dir, "datasets", "df_recetas_processed.csv"),
             os.path.join(self.base_dir, "datasets", "RAW_recipes.csv"),
+            os.path.join(os.path.dirname(__file__), "..", "datasets", "RAW_recipes.csv"),
         ]
         for candidate in processed_candidates:
             if os.path.exists(candidate):
                 return candidate
-        raise FileNotFoundError("No se encontró un dataset de recetas procesado ni RAW_recipes.csv.")
+        raise FileNotFoundError("No se encontró un dataset de recetas en datasets/RAW_recipes.csv")
 
     def _load_embedder(self) -> SentenceTransformer:
         embedder_candidates = [
@@ -152,35 +130,56 @@ class RecipeSimilarityAI:
     def _load_recipes(self) -> pd.DataFrame:
         df = pd.read_csv(self.dataset_path)
 
+        # Normalizar nombres de columnas (quitar espacios y pasar a minúsculas)
+        df.columns = [str(c).strip().lower() for c in df.columns]
+        
+        # Mapeo de nombres posibles a los nombres que espera la lógica de la clase
+        # Mapeo de nombres posibles a los nombres que espera la lógica de la clase
         rename_map = {
+            "nvmname": "Title",     # <--- AÑADE ESTA LÍNEA
             "title": "Title",
             "name": "Title",
             "ingredients": "Ingredients",
+            "recipe_ingredients": "Ingredients",
             "steps": "Instructions",
             "directions": "Instructions",
+            "instructions": "Instructions",
             "categories": "Category",
+            "tags": "Category"
         }
-        df = df.rename(columns={key: value for key, value in rename_map.items() if key in df.columns})
+        
+        df = df.rename(columns=rename_map)
 
+        # Validación obligatoria
         if "Title" not in df.columns or "Ingredients" not in df.columns:
-            raise ValueError("El dataset no contiene las columnas necesarias: Title e Ingredients.")
+            found_cols = df.columns.tolist()
+            raise ValueError(
+                f"El dataset no contiene las columnas necesarias. "
+                f"Esperaba 'Title' e 'Ingredients', pero encontré: {found_cols}"
+            )
 
+        # Rellenar opcionales
         if "Instructions" not in df.columns:
             df["Instructions"] = ""
-
         if "Category" not in df.columns:
             df["Category"] = ""
 
+        # Guardar versiones crudas para el payload
         df["IngredientsRaw"] = df["Ingredients"]
         df["InstructionsRaw"] = df["Instructions"]
         df["CategoryRaw"] = df["Category"]
 
+        # Procesamiento de datos
         df["Title"] = df["Title"].astype(str)
         df["Ingredients"] = df["Ingredients"].apply(_to_list).apply(_join_ingredients)
         df["Instructions"] = df["Instructions"].apply(_to_list).apply(
             lambda value: " | ".join(value) if isinstance(value, list) else str(value)
         )
 
+        # Generar Features para el embedding si no existen
+        if "features" in df.columns:
+             df = df.rename(columns={"features": "Features"})
+        
         if "Features" not in df.columns:
             df["Features"] = df["Ingredients"]
         else:
@@ -188,9 +187,11 @@ class RecipeSimilarityAI:
             empty_features = df["Features"].str.strip() == ""
             df.loc[empty_features, "Features"] = df.loc[empty_features, "Ingredients"]
 
+        # Limpiar filas vacías
         df = df.dropna(subset=["Title", "Features"]).reset_index(drop=True)
         df = df[df["Title"].str.strip() != ""]
         df = df[df["Features"].str.strip() != ""]
+        
         return df
 
     def _build_recipe_embeddings(self) -> np.ndarray:
@@ -208,83 +209,62 @@ class RecipeSimilarityAI:
         for ingredient in ingredients:
             if not ingredient:
                 continue
-            ingredient_text = str(ingredient).strip().lower()
-            if ingredient_text:
-                normalized.append(ingredient_text)
-        seen = set()
+            text = str(ingredient).strip().lower()
+            if text:
+                normalized.append(text)
+        
         unique = []
-        for ingredient in normalized:
-            if ingredient not in seen:
-                seen.add(ingredient)
-                unique.append(ingredient)
+        seen = set()
+        for item in normalized:
+            if item not in seen:
+                seen.add(item)
+                unique.append(item)
         return unique
 
     def _build_recipe_payload(self, row: pd.Series, score: float) -> dict:
         recipe = row.to_dict()
+        
+        # Procesar ingredientes y pasos
         ingredients_raw = recipe.get("IngredientsRaw", recipe.get("Ingredients", ""))
-        ingredients_lines = _split_ingredients_text(ingredients_raw)
-        ingredients_list = self._normalize_ingredients(ingredients_lines)
+        ingredients_list = self._normalize_ingredients(_split_ingredients_text(ingredients_raw))
+        
         tags = _split_pipe_values(recipe.get("CategoryRaw", recipe.get("Category", "")))
+        steps = _split_into_steps(recipe.get("InstructionsRaw", recipe.get("Instructions", "")))
 
         recipe["IngredientsList"] = ingredients_list
         recipe["Tags"] = tags
         recipe["SimilarityScore"] = float(score)
         recipe["SimilarityPercent"] = round(max(0.0, float(score)) * 100.0, 2)
-        # Steps parsed from InstructionsRaw (pipe-separated) or Instructions
-        steps_raw = recipe.get("InstructionsRaw", recipe.get("Instructions", ""))
-        steps = _split_into_steps(steps_raw)
         recipe["Steps"] = steps
 
-        # Dietary heuristics
+        # Heurísticas dietéticas
         joined_ings = " ".join(ingredients_list).lower()
         tags_lower = [t.lower() for t in tags]
 
-        lactose_kw = {"milk", "cream", "butter", "cheese", "yogurt", "sour cream", "ricotta", "parmesan", "mozzarella", "custard", "evaporated milk", "condensed milk", "buttermilk"}
-        gluten_kw = {"flour", "wheat", "bread", "pasta", "barley", "rye", "breadcrumbs", "cracker", "cake", "biscuit", "muffin", "semolina", "spaghetti"}
-        meat_kw = {"chicken", "beef", "pork", "lamb", "bacon", "ham", "salmon", "tuna", "shrimp", "fish", "seafood"}
+        lactose_kw = {"milk", "cream", "butter", "cheese", "yogurt", "sour cream", "ricotta"}
+        gluten_kw = {"flour", "wheat", "bread", "pasta", "barley", "rye"}
+        meat_kw = {"chicken", "beef", "pork", "lamb", "bacon", "ham", "fish", "seafood"}
 
-        contains_lactose = any(k in joined_ings for k in lactose_kw) or any("dairy" in t or "milk" in t for t in tags_lower)
-        contains_gluten = any(k in joined_ings for k in gluten_kw) or any("wheat" in t or "gluten" in t for t in tags_lower)
+        recipe["contains_lactose"] = any(k in joined_ings for k in lactose_kw) or any("dairy" in t for t in tags_lower)
+        recipe["contains_gluten"] = any(k in joined_ings for k in gluten_kw) or any("gluten" in t for t in tags_lower)
 
-        # Calories / Fat heuristics
         def _safe_float(v):
-            try:
-                return float(v)
-            except Exception:
-                return None
+            try: return float(v)
+            except: return None
 
-        calories = _safe_float(recipe.get("Calories") or recipe.get("calories"))
-        fat = _safe_float(recipe.get("Fat") or recipe.get("fat"))
+        calories = _safe_float(recipe.get("calories"))
+        fat = _safe_float(recipe.get("fat"))
 
-        low_calories = False
-        if calories is not None:
-            low_calories = calories <= 300
+        recipe["low_calories"] = calories <= 300 if calories is not None else False
+        recipe["low_fat"] = fat <= 10 if fat is not None else False
+        recipe["is_vegetarian"] = not any(m in joined_ings for m in meat_kw) and not any(m in " ".join(tags_lower) for m in meat_kw)
 
-        low_fat = False
-        if fat is not None:
-            low_fat = fat <= 10
-
-        # Vegetarian: if no obvious meat keywords in ingredients or tags
-        joined_tags = " ".join(tags_lower)
-        is_vegetarian = not any(m in joined_ings for m in meat_kw) and not any(m in joined_tags for m in meat_kw)
-
-        recipe["contains_lactose"] = bool(contains_lactose)
-        recipe["contains_gluten"] = bool(contains_gluten)
-        recipe["low_calories"] = bool(low_calories)
-        recipe["low_fat"] = bool(low_fat)
-        recipe["is_vegetarian"] = bool(is_vegetarian)
-
-        # Short dietary summary
+        # Resumen corto
         dietary = []
         dietary.append("lactose" if recipe["contains_lactose"] else "no-lactose")
         dietary.append("gluten" if recipe["contains_gluten"] else "no-gluten")
-        if recipe["low_calories"]:
-            dietary.append("low-calories")
-        if recipe["low_fat"]:
-            dietary.append("low-fat")
-        if recipe["is_vegetarian"]:
-            dietary.append("vegetarian")
-
+        if recipe["low_calories"]: dietary.append("low-calories")
+        if recipe["is_vegetarian"]: dietary.append("vegetarian")
         recipe["dietary_summary"] = dietary
 
         return recipe
@@ -310,17 +290,15 @@ class RecipeSimilarityAI:
             row = self.recipes.iloc[int(index)]
             score = float(scores[int(index)])
             recipe_payload = self._build_recipe_payload(row, score)
-            recommendations.append(
-                {
-                    "Title": row.get("Title", ""),
-                    "Ingredients": recipe_payload["IngredientsList"],
-                    "Tags": recipe_payload["Tags"],
-                    "Instructions": row.get("Instructions", ""),
-                    "similarity": score,
-                    "similarity_percent": recipe_payload["SimilarityPercent"],
-                    "recipe": recipe_payload,
-                }
-            )
+            recommendations.append({
+                "Title": row.get("Title", ""),
+                "Ingredients": recipe_payload["IngredientsList"],
+                "Tags": recipe_payload["Tags"],
+                "Instructions": row.get("Instructions", ""),
+                "similarity": score,
+                "similarity_percent": recipe_payload["SimilarityPercent"],
+                "recipe": recipe_payload,
+            })
 
         return recommendations[0] if top_k == 1 else recommendations
 

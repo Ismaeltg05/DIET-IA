@@ -10,23 +10,19 @@ services:
 
   backend:
     build: ./Backend
+    command: python3 -m uvicorn ai.main:app --host 0.0.0.0 --port 8000
     container_name: backend
     restart: always
     ports:
       - "3000:3000"
+      - "8000:8000"
     environment:
       MONGO_URI: mongodb://mongo:27017/diet-ia
     depends_on:
       - mongo
-      - ai
     volumes:
       - ./backend:/app
       - /app/node_modules
-  ai:
-    build: .
-    command: python3 -m uvicorn ai.main:app --host 0.0.0.0 --port 8000
-    ports:
-      - "8000:8000"
 
 volumes:
   mongo_data:
