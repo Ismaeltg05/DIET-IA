@@ -4,6 +4,8 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 
 const authRoutes = require('./routes/auth');
+const aiRoutes = require('./routes/ai');
+
 
 const app = express();
 
@@ -16,6 +18,7 @@ const recipeRoutes = require("./routes/recipes");
 
 app.use("/api/recipes", recipeRoutes);
 app.use('/auth', authRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: 'API funcionando' });
