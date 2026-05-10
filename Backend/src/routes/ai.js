@@ -3,7 +3,7 @@ const router = express.Router();
 
 router.post('/recommend', async (req, res) => {
   try {
-    const response = await fetch('http://ai:8000/recommend', {
+    const response = await fetch('http://localhost:8000/recommend', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

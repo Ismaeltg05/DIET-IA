@@ -27,7 +27,7 @@ export default function AIRecipes() {
         .map(i => i.trim())
         .filter(Boolean);
 
-      const response = await fetch(`${API_URL}/ai/recommend`, {
+      const response = await fetch(`${API_URL}/api/ai/recommend`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
