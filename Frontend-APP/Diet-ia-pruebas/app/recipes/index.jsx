@@ -1,22 +1,40 @@
-import { View, Text, FlatList, Pressable } from 'react-native';
+import { View, Text, FlatList, Pressable, ActivityIndicator } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import API_URL from '../../services/api';
+import { buildApiUrl } from '../../services/api';
 
 import '../../global.css';
 
 export default function Recipes() {
   const [recipes, setRecipes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const router = useRouter();
 
   useEffect(() => {
     const fetchRecipes = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/recipes`);
+        setError('');
+        setLoading(true);
+
+        const res = await fetch(buildApiUrl('/api/recipes'));
         const data = await res.json();
-        setRecipes(data.recipes);
+
+        if (!res.ok) {
+          throw new Error(data.error || data.detail || 'No se pudieron cargar las recetas');
+        }
+
+        const normalizedRecipes = Array.isArray(data.recipes)
+          ? data.recipes
+          : Array.isArray(data)
+            ? data
+            : [];
+
+        setRecipes(normalizedRecipes);
       } catch (error) {
-        console.log(error);
+        setError(error.message || 'Error de conexión con el backend');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -43,17 +61,30 @@ export default function Recipes() {
         </Text>
       </Pressable>
 
+      {loading && (
+        <ActivityIndicator
+          size="large"
+          className="mt-6"
+        />
+      )}
+
+      {!loading && !!error && (
+        <Text className="text-red-400 mb-4">
+          {error}
+        </Text>
+      )}
+
       <FlatList
         data={recipes}
-        keyExtractor={(item) => item._id}
+        keyExtractor={(item, index) => item?._id || String(index)}
         renderItem={({ item }) => (
           <View className="bg-zinc-800 p-4 rounded-xl mb-3">
             <Text className="text-white font-semibold">
-              {item.nvmname}
+              {item.nvmname || item.name || 'Receta sin nombre'}
             </Text>
 
             <Text className="text-zinc-400 text-xs mt-1">
-              {item.minutes} min • {item.n_ingredients} ingredientes
+              {item.minutes || 0} min • {item.n_ingredients || 0} ingredientes
             </Text>
           </View>
         )}

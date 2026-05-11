@@ -134,9 +134,8 @@ class RecipeSimilarityAI:
         df.columns = [str(c).strip().lower() for c in df.columns]
         
         # Mapeo de nombres posibles a los nombres que espera la lógica de la clase
-        # Mapeo de nombres posibles a los nombres que espera la lógica de la clase
         rename_map = {
-            "nvmname": "Title",     # <--- AÑADE ESTA LÍNEA
+            "nvmname": "Title",
             "title": "Title",
             "name": "Title",
             "ingredients": "Ingredients",
@@ -241,83 +240,84 @@ class RecipeSimilarityAI:
         joined_ings = " ".join(ingredients_list).lower()
         tags_lower = [t.lower() for t in tags]
 
-        lactose_kw = {"milk", "cream", "butter", "cheese", "yogurt", "sour cream", "ricotta"}
-        gluten_kw = {"flour", "wheat", "bread", "pasta", "barley", "rye"}
-        meat_kw = {"chicken", "beef", "pork", "lamb", "bacon", "ham", "fish", "seafood"}
-
-        recipe["contains_lactose"] = any(k in joined_ings for k in lactose_kw) or any("dairy" in t for t in tags_lower)
-        recipe["contains_gluten"] = any(k in joined_ings for k in gluten_kw) or any("gluten" in t for t in tags_lower)
-
-        def _safe_float(v):
-            try: return float(v)
-            except: return None
-
-        calories = _safe_float(recipe.get("calories"))
-        fat = _safe_float(recipe.get("fat"))
-
-        recipe["low_calories"] = calories <= 300 if calories is not None else False
-        recipe["low_fat"] = fat <= 10 if fat is not None else False
-        recipe["is_vegetarian"] = not any(m in joined_ings for m in meat_kw) and not any(m in " ".join(tags_lower) for m in meat_kw)
-
-        # Resumen corto
-        dietary = []
-        dietary.append("lactose" if recipe["contains_lactose"] else "no-lactose")
-        dietary.append("gluten" if recipe["contains_gluten"] else "no-gluten")
-        if recipe["low_calories"]: dietary.append("low-calories")
-        if recipe["is_vegetarian"]: dietary.append("vegetarian")
-        recipe["dietary_summary"] = dietary
+        dairy_keywords = ["milk", "cheese", "butter", "cream", "yogurt", "dairy"]
+        gluten_keywords = ["wheat", "bread", "flour", "pasta", "gluten", "barley", "rye"]
+        
+        recipe["contains_lactose"] = any(kw in joined_ings for kw in dairy_keywords)
+        recipe["contains_gluten"] = any(kw in joined_ings for kw in gluten_keywords)
+        recipe["is_vegetarian"] = not any(kw in joined_ings for kw in ["beef", "chicken", "fish", "meat", "pork"])
+        recipe["is_vegan"] = recipe["is_vegetarian"] and not recipe["contains_lactose"]
 
         return recipe
 
-    def recommend_best_recipe(self, ingredients: Sequence[str], top_k: int = 1):
-        normalized_ingredients = self._normalize_ingredients(ingredients)
-        if not normalized_ingredients:
-            raise ValueError("Se requieren ingredientes para buscar una receta.")
+    def recommend_best_recipe(
+        self,
+        ingredients: List[str],
+        top_k: int = 1
+    ) -> dict | List[dict]:
+        if not ingredients:
+            raise ValueError("At least one ingredient is required")
+        
+        # Normalize input ingredients
+        normalized = self._normalize_ingredients(ingredients)
+        if not normalized:
+            raise ValueError("No valid ingredients provided")
 
-        query_text = " ".join(normalized_ingredients)
+        # Create embedding for the input
         query_embedding = self.embedder.encode(
-            [query_text],
+            " ".join(normalized),
+            show_progress_bar=False,
             convert_to_numpy=True,
             normalize_embeddings=True,
-            show_progress_bar=False,
-        )[0]
-
-        scores = np.dot(self.recipe_embeddings, query_embedding)
-        best_indices = np.argsort(-scores)[: max(1, top_k)]
-
-        recommendations = []
-        for index in best_indices:
-            row = self.recipes.iloc[int(index)]
-            score = float(scores[int(index)])
-            recipe_payload = self._build_recipe_payload(row, score)
-            recommendations.append({
-                "Title": row.get("Title", ""),
-                "Ingredients": recipe_payload["IngredientsList"],
-                "Tags": recipe_payload["Tags"],
-                "Instructions": row.get("Instructions", ""),
-                "similarity": score,
-                "similarity_percent": recipe_payload["SimilarityPercent"],
-                "recipe": recipe_payload,
-            })
-
-        return recommendations[0] if top_k == 1 else recommendations
-
-    def explain_match(self, ingredients: Sequence[str]) -> str:
-        recipe = self.recommend_best_recipe(ingredients, top_k=1)
-        return (
-            f"{recipe['Title']}\n"
-            f"Similitud: {recipe['similarity_percent']:.2f}%\n"
-            f"Ingredientes: {', '.join(recipe['Ingredients'])}\n"
-            f"Tags: {', '.join(recipe['Tags'])}\n"
-            f"Instrucciones: {recipe['Instructions']}"
         )
 
+        # Calculate similarities
+        similarities = np.dot(self.recipe_embeddings, query_embedding)
 
-def ingredients_from_ner_output(items: Iterable) -> List[str]:
-    normalized = []
-    for item in items:
-        if isinstance(item, (list, tuple)) and item:
-            normalized.append(str(item[0]))
-        elif isinstance(item, str):
-            normalized.append(item)
-    return normalized
+        # Get top K indices
+        top_indices = np.argsort(similarities)[::-1][:max(top_k, 1)]
+
+        # Format results
+        results = []
+        for idx in top_indices:
+            row = self.recipes.iloc[idx]
+            score = float(similarities[idx])
+            payload = self._build_recipe_payload(row, score)
+            results.append(payload)
+
+        # Return single result or list
+        if top_k == 1:
+            return results[0] if results else {}
+        else:
+            return results
+
+    def explain_match(self, recipe_title: str, ingredients: List[str]) -> dict:
+        """Explain why a recipe matches given ingredients"""
+        normalized = self._normalize_ingredients(ingredients)
+        
+        # Find recipe
+        matching = self.recipes[
+            self.recipes['Title'].str.lower().str.contains(recipe_title.lower(), na=False)
+        ]
+        
+        if matching.empty:
+            raise ValueError(f"Recipe '{recipe_title}' not found")
+        
+        recipe_row = matching.iloc[0]
+        recipe_ingredients_str = recipe_row.get("Ingredients", "")
+        recipe_ingredients = _split_ingredients_text(recipe_ingredients_str)
+
+        # Calculate overlap
+        recipe_ing_lower = [ing.lower() for ing in recipe_ingredients]
+        matching_ingredients = [ing for ing in normalized if any(ing in r_ing for r_ing in recipe_ing_lower)]
+        
+        explanation = {
+            "recipe_title": recipe_row.get("Title"),
+            "query_ingredients": normalized,
+            "recipe_ingredients": recipe_ingredients,
+            "matching_ingredients": matching_ingredients,
+            "match_score": len(matching_ingredients) / max(len(normalized), 1),
+            "explanation": f"Matched {len(matching_ingredients)} out of {len(normalized)} query ingredients"
+        }
+        
+        return explanation
