@@ -5,3 +5,7 @@ pandas
 sentence-transformers
 torch
 scikit-learn
+happybase==1.2.0
+confluent-kafka==2.3.0
+pyspark==3.5.0
+thrift==0.16.0
