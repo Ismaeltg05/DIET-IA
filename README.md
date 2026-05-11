@@ -1,7 +1,6 @@
 **IES Zaidín Vergeles — Proyecto de IA - BD**
 
 **Autores:**
-- Adrián Ruiz Sánchez
 - Francisco José Salmerón Puig
 - Ismael Torres González
 

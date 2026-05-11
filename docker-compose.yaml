@@ -207,7 +207,7 @@ services:
     networks:
       - diet-ia
 
-  # --- REVERSE PROXY (Optional but recommended) ---
+  # --- REVERSE PROXY  ---
   nginx:
     image: nginx:alpine
     container_name: nginx
