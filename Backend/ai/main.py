@@ -1,8 +1,9 @@
 import json
 import logging
 import os
+import threading
 import time
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import happybase
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -38,6 +39,10 @@ app = FastAPI(
 
 # Initialize AI model placeholder (actual initialization done on startup)
 ai = None
+ai_load_lock = threading.Lock()
+
+# Fallback storage for user preferences when HBase is unavailable.
+PREFERENCES_FALLBACK_STORE: Dict[str, Dict[str, str]] = {}
 
 import asyncio
 
@@ -54,6 +59,35 @@ async def _init_ai_background():
         logger.info("✓ RecipeSimilarityAI loaded successfully (background)")
     except Exception as e:
         logger.error(f"✗ Error initializing RecipeSimilarityAI: {e}")
+
+
+def ensure_ai_loaded() -> bool:
+    """Load AI model on-demand if it is not ready yet.
+
+    This prevents transient 503 responses when the first requests arrive
+    before background startup initialization finishes.
+    """
+    global ai
+
+    if ai is not None:
+        return True
+
+    if not RecipeSimilarityAI:
+        logger.error("RecipeSimilarityAI class is not available")
+        return False
+
+    with ai_load_lock:
+        if ai is not None:
+            return True
+
+        try:
+            logger.info("Loading RecipeSimilarityAI on-demand...")
+            ai = RecipeSimilarityAI()
+            logger.info("✓ RecipeSimilarityAI loaded successfully (on-demand)")
+            return True
+        except Exception as e:
+            logger.error(f"✗ On-demand AI model load failed: {e}")
+            return False
 
 # --- KAFKA PRODUCER INITIALIZATION ---
 
@@ -99,33 +133,59 @@ async def startup_event():
         logger.error("✗ Skipping Kafka Producer initialization - broker unavailable")
         producer = None
 
-    # Initialize AI model asynchronously so the app can start immediately
+    # Initialize AI model before serving traffic.
+    # This avoids transient 503/504 errors during the first recommendation calls.
     try:
-        asyncio.create_task(_init_ai_background())
-    except Exception:
-        # If event loop isn't available, try importing synchronously as a fallback
-        try:
-            ai = RecipeSimilarityAI() if RecipeSimilarityAI else None
-            if ai:
-                logger.info("✓ RecipeSimilarityAI loaded synchronously (fallback)")
-        except Exception as e:
-            logger.error(f"✗ Failed to initialize AI model on startup fallback: {e}")
+        loop = asyncio.get_running_loop()
+        loaded = await loop.run_in_executor(None, ensure_ai_loaded)
+        if not loaded:
+            logger.warning("AI model not ready at startup; API may return 503 until it loads")
+    except Exception as e:
+        logger.error(f"✗ Failed to initialize AI model on startup: {e}")
 
 # --- HBASE CONNECTION HELPER ---
 
 def get_hbase_table(table_name='user_preferences'):
-    """Get HBase table connection with error handling"""
+    """Get HBase table connection with error handling.
+
+    Creates the table if it does not exist yet.
+    """
     try:
         connection = happybase.Connection(
             HBASE_HOST, 
             port=HBASE_PORT, 
             timeout=5000
         )
+        connection.open()
+
+        existing_tables = {name.decode() for name in connection.tables()}
+        if table_name not in existing_tables:
+            connection.create_table(table_name, {'cf': dict()})
+            logger.info(f"✓ HBase table created: {table_name}")
+
         table = connection.table(table_name)
         return table
     except Exception as e:
         logger.error(f"✗ HBase connection error ({HBASE_HOST}:{HBASE_PORT}): {e}")
         return None
+
+
+def load_user_preferences(user_id: str) -> Dict[str, str]:
+    """Read user preferences from HBase and fallback storage."""
+    table = get_hbase_table()
+
+    if table:
+        try:
+            row = table.row(user_id.encode())
+            if row:
+                return {
+                    k.decode().replace('cf:', ''): v.decode()
+                    for k, v in row.items()
+                }
+        except Exception as e:
+            logger.warning(f"Could not fetch HBase preferences for {user_id}: {e}")
+
+    return PREFERENCES_FALLBACK_STORE.get(user_id, {})
 
 # --- PYDANTIC MODELS ---
 
@@ -187,30 +247,23 @@ def recommend(data: IngredientsRequest):
     then uses AI model to find best matching recipe.
     """
     try:
-        if not ai:
+        if not ai and not ensure_ai_loaded():
             raise HTTPException(
                 status_code=503, 
-                detail="AI model not loaded. Check recipe_ai.py is available"
+                detail="AI model not loaded yet. Retry in a few seconds."
             )
         
         # 1. Check user dietary restrictions from HBase
         no_lactose = False
         lactose_free = False
         
-        table = get_hbase_table()
-        if table:
-            try:
-                row = table.row(data.user_id.encode())
-                if row:
-                    if b'cf:lactose_intolerant' in row:
-                        no_lactose = row[b'cf:lactose_intolerant'].decode().lower() == "true"
-                    if b'cf:lactose_free' in row:
-                        lactose_free = row[b'cf:lactose_free'].decode().lower() == "true"
-                    
-                    if no_lactose or lactose_free:
-                        logger.info(f"User {data.user_id} has lactose restrictions")
-            except Exception as e:
-                logger.warning(f"Could not fetch HBase preferences: {e}")
+        preferences = load_user_preferences(data.user_id)
+        if preferences:
+            no_lactose = str(preferences.get('lactose_intolerant', 'false')).lower() == "true"
+            lactose_free = str(preferences.get('lactose_free', 'false')).lower() == "true"
+
+            if no_lactose or lactose_free:
+                logger.info(f"User {data.user_id} has lactose restrictions")
         
         # 2. Get AI recommendation
         recipe = ai.recommend_best_recipe(data.ingredients)
@@ -278,24 +331,13 @@ def get_preferences(user_id: str):
     Retrieve user dietary preferences and restrictions from HBase.
     Returns lactose intolerance, allergies, etc.
     """
-    table = get_hbase_table()
-    if not table:
-        raise HTTPException(status_code=503, detail="HBase connection failed")
-    
     try:
-        row = table.row(user_id.encode())
-        if not row:
-            return {"user_id": user_id, "preferences": {}, "found": False}
-        
-        preferences = {
-            k.decode().replace('cf:', ''): v.decode() 
-            for k, v in row.items()
-        }
-        
+        preferences = load_user_preferences(user_id)
+
         return {
-            "user_id": user_id, 
+            "user_id": user_id,
             "preferences": preferences,
-            "found": True
+            "found": bool(preferences)
         }
     except Exception as e:
         logger.error(f"✗ Failed to fetch preferences: {e}")
@@ -307,24 +349,37 @@ def save_preferences(user_id: str, data: UserPrefs):
     Save user dietary preferences and restrictions to HBase.
     Example: {"preferences": {"lactose_intolerant": "true", "vegan": "false"}}
     """
-    table = get_hbase_table()
-    if not table:
-        raise HTTPException(status_code=503, detail="HBase connection failed")
-    
     try:
         # Format data for HBase (column family: cf)
         formatted_data = {
             f"cf:{k}".encode(): str(v).encode() 
             for k, v in data.preferences.items()
         }
-        
-        table.put(user_id.encode(), formatted_data)
-        logger.info(f"✓ Preferences saved for user {user_id}")
-        
+
+        # Keep a local fallback copy regardless of HBase status.
+        PREFERENCES_FALLBACK_STORE[user_id] = {
+            str(k): str(v) for k, v in data.preferences.items()
+        }
+
+        table = get_hbase_table()
+        if table:
+            try:
+                table.put(user_id.encode(), formatted_data)
+                logger.info(f"✓ Preferences saved for user {user_id} in HBase")
+                return {
+                    "status": "success",
+                    "message": "Preferences persisted in HBase",
+                    "user_id": user_id,
+                    "storage": "hbase"
+                }
+            except Exception as hbase_error:
+                logger.warning(f"HBase put failed for user {user_id}, using fallback: {hbase_error}")
+
         return {
             "status": "success",
-            "message": "Preferences persisted in HBase",
-            "user_id": user_id
+            "message": "Preferences persisted in fallback storage",
+            "user_id": user_id,
+            "storage": "fallback"
         }
     except Exception as e:
         logger.error(f"✗ Failed to save preferences: {e}")

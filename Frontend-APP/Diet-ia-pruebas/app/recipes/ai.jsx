@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,14 @@ import {
 } from 'react-native';
 
 import '../../global.css';
-import { buildApiUrl } from '../../services/api';
 import { getUserId } from '../../services/auth';
+import {
+  getAiHealth,
+  getUserPreferences,
+  rateRecipe,
+  recommendRecipe,
+  saveUserPreferences
+} from '../../services/ai';
 
 const toArray = (value) => {
   if (Array.isArray(value)) return value;
@@ -28,6 +34,64 @@ export default function AIRecipes() {
   const [loading, setLoading] = useState(false);
   const [recipe, setRecipe] = useState(null);
   const [error, setError] = useState('');
+  const [health, setHealth] = useState('checking');
+  const [userId, setUserId] = useState('guest');
+  const [preferences, setPreferences] = useState({
+    lactose_intolerant: false,
+    vegan: false,
+    gluten_free: false
+  });
+  const [prefsLoading, setPrefsLoading] = useState(false);
+  const [prefsMessage, setPrefsMessage] = useState('');
+  const [rating, setRating] = useState(0);
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [ratingMessage, setRatingMessage] = useState('');
+  const aiReady = health === 'healthy';
+
+  const toBool = (value) => {
+    if (typeof value === 'boolean') return value;
+    return String(value).toLowerCase() === 'true';
+  };
+
+  useEffect(() => {
+    const loadInitialState = async () => {
+      let resolvedUserId = 'guest';
+
+      try {
+        const storedUserId = await getUserId();
+        resolvedUserId = storedUserId || 'guest';
+        setUserId(resolvedUserId);
+      } catch {
+        setUserId('guest');
+      }
+
+      try {
+        const data = await getAiHealth();
+        setHealth(data.overall || 'unknown');
+      } catch {
+        setHealth('offline');
+      }
+
+      try {
+        const data = await getUserPreferences(resolvedUserId);
+        const loadedPrefs = data?.preferences || {};
+
+        setPreferences({
+          lactose_intolerant: toBool(loadedPrefs.lactose_intolerant),
+          vegan: toBool(loadedPrefs.vegan),
+          gluten_free: toBool(loadedPrefs.gluten_free)
+        });
+      } catch {
+        setPreferences({
+          lactose_intolerant: false,
+          vegan: false,
+          gluten_free: false
+        });
+      }
+    };
+
+    loadInitialState();
+  }, []);
 
   const handleRecommend = async () => {
     if (!ingredientsText.trim()) return;
@@ -44,29 +108,57 @@ export default function AIRecipes() {
 
       const userId = await getUserId();
 
-      const response = await fetch(buildApiUrl('/api/ai/recommend'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ingredients,
-          user_id: userId || 'guest'
-        })
+      const data = await recommendRecipe({
+        ingredients,
+        userId: userId || 'guest'
       });
 
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(data.error || data.detail || 'No se pudo obtener recomendación');
-      }
-
       setRecipe(data);
+      setRating(0);
+      setRatingMessage('');
 
     } catch (error) {
       setError(error.message || 'Error de conexión con el backend');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSavePreferences = async () => {
+    try {
+      setPrefsLoading(true);
+      setPrefsMessage('');
+
+      await saveUserPreferences(userId || 'guest', preferences);
+      setPrefsMessage('Preferencias guardadas correctamente');
+    } catch (err) {
+      setPrefsMessage(err.message || 'No se pudieron guardar las preferencias');
+    } finally {
+      setPrefsLoading(false);
+    }
+  };
+
+  const handleRateRecipe = async (value) => {
+    if (!recipe) return;
+
+    const recipeId = String(recipe.recipe_id || recipe.id || recipe._id || recipe.Title || 'unknown');
+
+    try {
+      setRatingLoading(true);
+      setRatingMessage('');
+      setRating(value);
+
+      await rateRecipe({
+        userId: userId || 'guest',
+        recipeId,
+        rating: value
+      });
+
+      setRatingMessage('Valoracion enviada');
+    } catch (err) {
+      setRatingMessage(err.message || 'No se pudo enviar la valoracion');
+    } finally {
+      setRatingLoading(false);
     }
   };
 
@@ -102,6 +194,74 @@ export default function AIRecipes() {
         la receta más parecida de la base de datos.
       </Text>
 
+      <Text className="text-zinc-500 mb-4">
+        Estado backend AI: {health}
+      </Text>
+
+      {!aiReady && (
+        <Text className="text-amber-300 mb-4 text-xs">
+          El modelo de IA se esta cargando. Espera unos segundos y vuelve a intentarlo.
+        </Text>
+      )}
+
+      <View className="bg-zinc-900 rounded-2xl p-4 mb-5">
+        <Text className="text-white font-semibold mb-2">
+          Preferencias del usuario ({userId})
+        </Text>
+
+        <Pressable
+          onPress={() => setPreferences(prev => ({
+            ...prev,
+            lactose_intolerant: !prev.lactose_intolerant
+          }))}
+          className="bg-zinc-800 rounded-xl px-3 py-2 mb-2"
+        >
+          <Text className="text-zinc-200">
+            Sin lactosa: {preferences.lactose_intolerant ? 'Si' : 'No'}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => setPreferences(prev => ({
+            ...prev,
+            vegan: !prev.vegan
+          }))}
+          className="bg-zinc-800 rounded-xl px-3 py-2 mb-2"
+        >
+          <Text className="text-zinc-200">
+            Vegano: {preferences.vegan ? 'Si' : 'No'}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => setPreferences(prev => ({
+            ...prev,
+            gluten_free: !prev.gluten_free
+          }))}
+          className="bg-zinc-800 rounded-xl px-3 py-2 mb-3"
+        >
+          <Text className="text-zinc-200">
+            Sin gluten: {preferences.gluten_free ? 'Si' : 'No'}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={handleSavePreferences}
+          disabled={prefsLoading}
+          className="bg-emerald-600 py-3 rounded-xl"
+        >
+          <Text className="text-white text-center font-semibold">
+            {prefsLoading ? 'Guardando...' : 'Guardar preferencias'}
+          </Text>
+        </Pressable>
+
+        {!!prefsMessage && (
+          <Text className="text-zinc-300 mt-3 text-xs">
+            {prefsMessage}
+          </Text>
+        )}
+      </View>
+
       <TextInput
         multiline
         value={ingredientsText}
@@ -113,10 +273,11 @@ export default function AIRecipes() {
 
       <Pressable
         onPress={handleRecommend}
-        className="bg-indigo-600 py-4 rounded-2xl"
+        disabled={!aiReady || loading}
+        className={`py-4 rounded-2xl ${!aiReady || loading ? 'bg-zinc-700' : 'bg-indigo-600'}`}
       >
         <Text className="text-white text-center font-semibold">
-          Buscar receta
+          {loading ? 'Buscando...' : 'Buscar receta'}
         </Text>
       </Pressable>
 
@@ -172,6 +333,29 @@ export default function AIRecipes() {
           <Text className="text-zinc-300">
             {stepsList.join('\n\n')}
           </Text>
+
+          <Text className="text-white font-semibold mt-5 mb-2">
+            Valora esta receta
+          </Text>
+
+          <View className="flex-row gap-2">
+            {[1, 2, 3, 4, 5].map((value) => (
+              <Pressable
+                key={value}
+                onPress={() => handleRateRecipe(value)}
+                disabled={ratingLoading}
+                className={`px-3 py-2 rounded-lg ${rating === value ? 'bg-amber-500' : 'bg-zinc-700'}`}
+              >
+                <Text className="text-white font-semibold">{value}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {!!ratingMessage && (
+            <Text className="text-zinc-300 mt-3 text-xs">
+              {ratingMessage}
+            </Text>
+          )}
 
         </View>
       )}
