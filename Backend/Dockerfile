@@ -1,20 +1,29 @@
-FROM node:20
+FROM python:3.11-slim
 
-# Python
-RUN apt-get update && apt-get install -y python3 python3-pip
-
+# Set working directory
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copiar requirements.txt desde la carpeta ai
-COPY ai/requirements.txt ./ai/
-RUN pip3 install --break-system-packages -r ./ai/requirements.txt
+# Copy requirements first (for better layer caching)
+COPY ai/requirements.txt ./ai/requirements.txt
 
-COPY . .
+# Install Python dependencies
+RUN pip install --no-cache-dir -r ./ai/requirements.txt
 
-EXPOSE 3000
+# Copy application code
+COPY ai/ ./ai/
+
+# Health check
+HEALTHCHECK --interval=15s --timeout=10s --retries=5 --start-period=10s \
+    CMD curl -f http://localhost:8000/api/ai/health || exit 1
+
+# Expose port
 EXPOSE 8000
 
-CMD ["npm", "run", "dev"]
+# Run the application
+CMD ["python3", "-m", "uvicorn", "ai.main:app", "--host", "0.0.0.0", "--port", "8000"]
