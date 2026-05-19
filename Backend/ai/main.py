@@ -133,15 +133,12 @@ async def startup_event():
         logger.error("✗ Skipping Kafka Producer initialization - broker unavailable")
         producer = None
 
-    # Initialize AI model before serving traffic.
-    # This avoids transient 503/504 errors during the first recommendation calls.
+    # Load the AI model in the background so the API can start listening immediately.
+    # The recommendation endpoint already retries on demand if the model is not ready yet.
     try:
-        loop = asyncio.get_running_loop()
-        loaded = await loop.run_in_executor(None, ensure_ai_loaded)
-        if not loaded:
-            logger.warning("AI model not ready at startup; API may return 503 until it loads")
+        asyncio.create_task(_init_ai_background())
     except Exception as e:
-        logger.error(f"✗ Failed to initialize AI model on startup: {e}")
+        logger.error(f"✗ Failed to schedule AI model initialization: {e}")
 
 # --- HBASE CONNECTION HELPER ---
 
