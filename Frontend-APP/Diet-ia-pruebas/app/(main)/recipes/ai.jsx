@@ -8,15 +8,15 @@ import {
   ActivityIndicator
 } from 'react-native';
 
-import '../../global.css';
-import { getUserId } from '../../services/auth';
+import '../../../global.css';
+import { getUserId } from '../../../services/auth';
 import {
   getAiHealth,
   getUserPreferences,
   rateRecipe,
   recommendRecipe,
   saveUserPreferences
-} from '../../services/ai';
+} from '../../../services/ai';
 
 const toArray = (value) => {
   if (Array.isArray(value)) return value;
@@ -47,6 +47,34 @@ export default function AIRecipes() {
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratingMessage, setRatingMessage] = useState('');
   const aiReady = health === 'healthy';
+
+  const preferenceOptions = [
+    {
+      key: 'lactose_intolerant',
+      label: 'Sin lactosa',
+      icon: '🥛',
+      disabledLabel: 'Sin restricción'
+    },
+    {
+      key: 'vegan',
+      label: 'Vegano',
+      icon: '🥦',
+      disabledLabel: 'Sin preferencia vegana'
+    },
+    {
+      key: 'gluten_free',
+      label: 'Sin gluten',
+      icon: '🌾',
+      disabledLabel: 'Sin restricción de gluten'
+    }
+  ];
+
+  const togglePreference = (key) => {
+    setPreferences(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
 
   const toBool = (value) => {
     if (typeof value === 'boolean') return value;
@@ -182,19 +210,19 @@ export default function AIRecipes() {
   })();
 
   return (
-    <ScrollView className="flex-1 bg-zinc-950 px-5 pt-12">
+    <ScrollView className="flex-1 bg-zinc-950 dark:bg-zinc-50 px-5 pt-12 pb-28">
 
-      <Text className="text-white text-3xl font-bold mb-2">
+      <Text className="text-white dark:text-zinc-950 text-3xl font-bold mb-2">
         IA Recetas 🍳
       </Text>
 
-      <Text className="text-zinc-400 mb-8">
+      <Text className="text-zinc-400 dark:text-zinc-600 mb-8">
         Escribe alimentos o una frase natural.
         La IA procesará el texto, extraerá los ingredientes y te recomendará
         la receta más parecida de la base de datos.
       </Text>
 
-      <Text className="text-zinc-500 mb-4">
+      <Text className="text-zinc-500 dark:text-zinc-600 mb-4">
         Estado backend AI: {health}
       </Text>
 
@@ -204,46 +232,38 @@ export default function AIRecipes() {
         </Text>
       )}
 
-      <View className="bg-zinc-900 rounded-2xl p-4 mb-5">
-        <Text className="text-white font-semibold mb-2">
+      <View className="bg-zinc-900 dark:bg-zinc-100 rounded-2xl p-4 mb-5">
+        <Text className="text-white dark:text-zinc-950 font-semibold mb-2">
           Preferencias del usuario ({userId})
         </Text>
 
-        <Pressable
-          onPress={() => setPreferences(prev => ({
-            ...prev,
-            lactose_intolerant: !prev.lactose_intolerant
-          }))}
-          className="bg-zinc-800 rounded-xl px-3 py-2 mb-2"
-        >
-          <Text className="text-zinc-200">
-            Sin lactosa: {preferences.lactose_intolerant ? 'Si' : 'No'}
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => setPreferences(prev => ({
-            ...prev,
-            vegan: !prev.vegan
-          }))}
-          className="bg-zinc-800 rounded-xl px-3 py-2 mb-2"
-        >
-          <Text className="text-zinc-200">
-            Vegano: {preferences.vegan ? 'Si' : 'No'}
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => setPreferences(prev => ({
-            ...prev,
-            gluten_free: !prev.gluten_free
-          }))}
-          className="bg-zinc-800 rounded-xl px-3 py-2 mb-3"
-        >
-          <Text className="text-zinc-200">
-            Sin gluten: {preferences.gluten_free ? 'Si' : 'No'}
-          </Text>
-        </Pressable>
+        {preferenceOptions.map((option) => {
+          const isActive = preferences[option.key];
+          return (
+            <Pressable
+              key={option.key}
+              onPress={() => togglePreference(option.key)}
+              className={`rounded-3xl p-4 mb-3 flex-row items-center justify-between ${isActive ? 'bg-emerald-600 dark:bg-emerald-600' : 'bg-zinc-800 dark:bg-zinc-200 opacity-70'}`}
+            >
+              <View className="flex-row items-center gap-3">
+                <View className={`w-12 h-12 rounded-3xl items-center justify-center ${isActive ? 'bg-emerald-700 dark:bg-emerald-600' : 'bg-zinc-700 dark:bg-zinc-300'}`}>
+                  <Text className="text-2xl">{option.icon}</Text>
+                </View>
+                <View>
+                  <Text className="text-white font-semibold text-base">
+                    {option.label}
+                  </Text>
+                  <Text className="text-zinc-300 text-xs">
+                    {isActive ? 'Activado' : option.disabledLabel}
+                  </Text>
+                </View>
+              </View>
+              <Text className={`text-sm font-semibold ${isActive ? 'text-white' : 'text-zinc-400'}`}>
+                {isActive ? 'Sí' : 'No'}
+              </Text>
+            </Pressable>
+          );
+        })}
 
         <Pressable
           onPress={handleSavePreferences}
@@ -268,7 +288,7 @@ export default function AIRecipes() {
         onChangeText={setIngredientsText}
         placeholder="Ej: Tengo tomate, cebolla, ajo y aceite de oliva"
         placeholderTextColor="#71717a"
-        className="bg-zinc-900 text-white p-4 rounded-2xl min-h-[120px] mb-5"
+        className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 rounded-2xl p-4 min-h-[120px] mb-5"
       />
 
       <Pressable
@@ -295,9 +315,9 @@ export default function AIRecipes() {
       )}
 
       {recipe && (
-        <View className="bg-zinc-900 rounded-3xl p-5 mt-8">
+        <View className="bg-zinc-900 dark:bg-zinc-100 rounded-3xl p-5 mt-8">
 
-          <Text className="text-white text-2xl font-bold mb-3">
+          <Text className="text-white dark:text-zinc-950 text-2xl font-bold mb-3">
             {recipe.Title || recipe.title || 'Recomendación'}
           </Text>
 
