@@ -27,8 +27,8 @@ export default function Register() {
   };
 
   return (
-    <View className="flex-1 justify-center items-center p-4 bg-zinc-950">
-      <Text className="text-2xl font-semibold mb-6 text-white">
+    <View className="flex-1 justify-center items-center p-4 bg-zinc-950 dark:bg-zinc-50">
+      <Text className="text-2xl font-semibold mb-6 text-white dark:text-zinc-950">
         Registrarse
       </Text>
 
@@ -37,7 +37,7 @@ export default function Register() {
         placeholderTextColor="#71717a"
         value={name}
         onChangeText={setName}
-        className="w-full border-b border-zinc-700 mb-4 p-2 text-white"
+        className="w-full border-b border-zinc-700 dark:border-zinc-300 mb-4 p-2 text-white dark:text-zinc-950 bg-transparent dark:bg-transparent"
       />
 
       <TextInput
@@ -45,7 +45,7 @@ export default function Register() {
         placeholderTextColor="#71717a"
         value={email}
         onChangeText={setEmail}
-        className="w-full border-b border-zinc-700 mb-4 p-2 text-white"
+        className="w-full border-b border-zinc-700 dark:border-zinc-300 mb-4 p-2 text-white dark:text-zinc-950 bg-transparent dark:bg-transparent"
       />
 
       <TextInput
@@ -53,7 +53,7 @@ export default function Register() {
         placeholderTextColor="#71717a"
         value={phone}
         onChangeText={setPhone}
-        className="w-full border-b border-zinc-700 mb-4 p-2 text-white"
+        className="w-full border-b border-zinc-700 dark:border-zinc-300 mb-4 p-2 text-white dark:text-zinc-950 bg-transparent dark:bg-transparent"
       />
 
       <TextInput
@@ -62,7 +62,7 @@ export default function Register() {
         secureTextEntry
         value={password}
         onChangeText={setPassword}
-        className="w-full border-b border-zinc-700 mb-6 p-2 text-white"
+        className="w-full border-b border-zinc-700 dark:border-zinc-300 mb-6 p-2 text-white dark:text-zinc-950 bg-transparent dark:bg-transparent"
       />
 
       <Pressable

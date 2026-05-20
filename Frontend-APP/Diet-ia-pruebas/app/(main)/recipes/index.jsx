@@ -1,9 +1,9 @@
 import { View, Text, FlatList, Pressable, ActivityIndicator } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { buildApiUrl } from '../../services/api';
+import { buildApiUrl } from '../../../services/api';
 
-import '../../global.css';
+import '../../../global.css';
 
 export default function Recipes() {
   const [recipes, setRecipes] = useState([]);
@@ -42,9 +42,9 @@ export default function Recipes() {
   }, []);
 
   return (
-    <View className="flex-1 bg-zinc-950 p-4">
+    <View className="flex-1 bg-zinc-950 dark:bg-zinc-50 p-4 pb-28">
 
-      <Text className="text-white text-2xl font-bold mb-4">
+      <Text className="text-white dark:text-zinc-950 text-2xl font-bold mb-4">
         Recetas 🍲
       </Text>
 
@@ -78,12 +78,12 @@ export default function Recipes() {
         data={recipes}
         keyExtractor={(item, index) => item?._id || String(index)}
         renderItem={({ item }) => (
-          <View className="bg-zinc-800 p-4 rounded-xl mb-3">
-            <Text className="text-white font-semibold">
+          <View className="bg-zinc-800 dark:bg-zinc-200 p-4 rounded-xl mb-3">
+            <Text className="text-white dark:text-zinc-950 font-semibold">
               {item.nvmname || item.name || 'Receta sin nombre'}
             </Text>
 
-            <Text className="text-zinc-400 text-xs mt-1">
+            <Text className="text-zinc-400 dark:text-zinc-600 text-xs mt-1">
               {item.minutes || 0} min • {item.n_ingredients || 0} ingredientes
             </Text>
           </View>
