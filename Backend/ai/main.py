@@ -133,10 +133,10 @@ async def startup_event():
         logger.error("✗ Skipping Kafka Producer initialization - broker unavailable")
         producer = None
 
-    # Load the AI model in the background so the API can start listening immediately.
-    # The recommendation endpoint already retries on demand if the model is not ready yet.
+    # Load the AI model before marking the service ready so the first
+    # recommendation request does not block on a cold start.
     try:
-        asyncio.create_task(_init_ai_background())
+        await _init_ai_background()
     except Exception as e:
         logger.error(f"✗ Failed to schedule AI model initialization: {e}")
 

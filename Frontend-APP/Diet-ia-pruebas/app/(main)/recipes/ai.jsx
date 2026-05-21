@@ -122,7 +122,7 @@ export default function AIRecipes() {
   }, []);
 
   const handleRecommend = async () => {
-    if (!ingredientsText.trim()) return;
+    if (!ingredientsText.trim() || loading) return;
 
     try {
       setError('');
@@ -293,8 +293,7 @@ export default function AIRecipes() {
 
       <Pressable
         onPress={handleRecommend}
-        disabled={!aiReady || loading}
-        className={`py-4 rounded-2xl ${!aiReady || loading ? 'bg-zinc-700' : 'bg-indigo-600'}`}
+        className="py-4 rounded-2xl bg-indigo-600"
       >
         <Text className="text-white text-center font-semibold">
           {loading ? 'Buscando...' : 'Buscar receta'}
