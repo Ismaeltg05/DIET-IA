@@ -134,7 +134,7 @@ services:
   # --- BACKEND API ---
   backend:
     build:
-      context: .
+      context: ./Backend
       dockerfile: ./Dockerfile
     container_name: backend
     restart: always
