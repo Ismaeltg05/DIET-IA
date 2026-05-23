@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Appearance, Platform, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ThemeContext = createContext({
@@ -8,18 +8,41 @@ const ThemeContext = createContext({
 });
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState(() => {
+    const systemTheme = Appearance.getColorScheme();
+    return systemTheme === 'light' ? 'light' : 'dark';
+  });
 
   useEffect(() => {
+    let isMounted = true;
+
     AsyncStorage.getItem('theme').then((savedTheme) => {
+      if (!isMounted) return;
+
       if (savedTheme === 'light' || savedTheme === 'dark') {
         setTheme(savedTheme);
       }
     });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
     AsyncStorage.setItem('theme', theme);
+
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const root = document.documentElement;
+      const body = document.body;
+
+      root.classList.toggle('dark', theme === 'dark');
+      body.classList.toggle('dark', theme === 'dark');
+      root.style.colorScheme = theme;
+      body.style.colorScheme = theme;
+      body.style.backgroundColor = theme === 'dark' ? '#09090b' : '#f8fafc';
+      body.style.color = theme === 'dark' ? '#fafafa' : '#09090b';
+    }
   }, [theme]);
 
   const toggleTheme = () => {
@@ -28,7 +51,7 @@ export function ThemeProvider({ children }) {
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      <View className={`${theme === 'dark' ? 'dark ' : ''}flex-1`}>
+      <View className={`${theme === 'dark' ? 'dark bg-zinc-950' : 'bg-zinc-50'} flex-1`}>
         {children}
       </View>
     </ThemeContext.Provider>

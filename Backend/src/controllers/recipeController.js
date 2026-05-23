@@ -1,6 +1,19 @@
 const Recipe = require("../models/Recipe");
 const RecipeRating = require("../models/recipeRating");
 
+const isGuestUser = (userId) => {
+  const normalizedUserId = String(userId || '').trim().toLowerCase();
+  return !normalizedUserId || normalizedUserId === 'guest' || normalizedUserId === 'invitado';
+};
+
+const buildEmptyBreakdown = () => ({
+  1: 0,
+  2: 0,
+  3: 0,
+  4: 0,
+  5: 0
+});
+
 const buildRatingSummary = async ({ recipeId, userId }) => {
   const [summary] = await RecipeRating.aggregate([
     {
@@ -17,6 +30,30 @@ const buildRatingSummary = async ({ recipeId, userId }) => {
     }
   ]);
 
+  const breakdownDocs = await RecipeRating.aggregate([
+    {
+      $match: {
+        recipeId
+      }
+    },
+    {
+      $group: {
+        _id: '$rating',
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const ratingBreakdown = buildEmptyBreakdown();
+
+  breakdownDocs.forEach(({ _id, count }) => {
+    const ratingValue = Number(_id);
+
+    if (Number.isInteger(ratingValue) && ratingValue >= 1 && ratingValue <= 5) {
+      ratingBreakdown[ratingValue] = count;
+    }
+  });
+
   const userRating = userId
     ? await RecipeRating.findOne({ recipeId, userId }).lean()
     : null;
@@ -25,6 +62,7 @@ const buildRatingSummary = async ({ recipeId, userId }) => {
     recipeId,
     ratingCount: summary?.count || 0,
     averageRating: summary ? Number(summary.averageRating.toFixed(2)) : null,
+    ratingBreakdown,
     userHasRated: Boolean(userRating),
     userRating: userRating?.rating ?? null
   };
@@ -78,6 +116,10 @@ exports.saveRecipeRating = async (req, res) => {
 
     if (!userId) {
       return res.status(400).json({ error: 'userId es obligatorio' });
+    }
+
+    if (isGuestUser(userId)) {
+      return res.status(403).json({ error: 'Los usuarios invitados no pueden valorar recetas' });
     }
 
     const parsedRating = Number(rating);

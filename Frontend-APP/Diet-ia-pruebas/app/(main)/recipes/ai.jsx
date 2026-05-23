@@ -49,6 +49,13 @@ export default function AIRecipes() {
   const [ratingMessage, setRatingMessage] = useState('');
   const [ratingSummary, setRatingSummary] = useState(null);
   const aiReady = health === 'healthy';
+  const isGuestUser = String(userId || '').trim().toLowerCase() === 'guest' || String(userId || '').trim().toLowerCase() === 'invitado';
+  const screenSurface = 'bg-zinc-950 dark:bg-zinc-50';
+  const cardSurface = 'bg-zinc-900 dark:bg-white border border-zinc-800 dark:border-zinc-200 shadow-sm shadow-black/20 dark:shadow-zinc-300/40';
+  const cardMutedSurface = 'bg-zinc-800 dark:bg-zinc-100 border border-zinc-700 dark:border-zinc-200';
+  const titleText = 'text-white dark:text-zinc-950';
+  const bodyText = 'text-zinc-300 dark:text-zinc-600';
+  const mutedText = 'text-zinc-400 dark:text-zinc-500';
 
   const preferenceOptions = [
     {
@@ -195,6 +202,11 @@ export default function AIRecipes() {
   const handleRateRecipe = async (value) => {
     if (!recipe) return;
 
+    if (isGuestUser) {
+      setRatingMessage('Los usuarios invitados no pueden valorar recetas');
+      return;
+    }
+
     const recipeId = String(recipe.recipe_id || recipe.id || recipe._id || recipe.Title || 'unknown');
 
     try {
@@ -242,19 +254,19 @@ export default function AIRecipes() {
   })();
 
   return (
-    <ScrollView className="flex-1 bg-zinc-950 dark:bg-zinc-50 px-5 pt-12 pb-28">
+    <ScrollView className={`flex-1 ${screenSurface} px-5 pt-12 pb-28`}>
 
-      <Text className="text-white dark:text-zinc-950 text-3xl font-bold mb-2">
+      <Text className={`${titleText} text-3xl font-bold mb-2`}>
         IA Recetas 🍳
       </Text>
 
-      <Text className="text-zinc-400 dark:text-zinc-600 mb-8">
+      <Text className={`${bodyText} mb-8`}>
         Escribe alimentos o una frase natural.
         La IA procesará el texto, extraerá los ingredientes y te recomendará
         la receta más parecida de la base de datos.
       </Text>
 
-      <Text className="text-zinc-500 dark:text-zinc-600 mb-4">
+      <Text className={`${mutedText} mb-4`}>
         Estado backend AI: {health}
       </Text>
 
@@ -264,8 +276,8 @@ export default function AIRecipes() {
         </Text>
       )}
 
-      <View className="bg-zinc-900 dark:bg-zinc-100 rounded-2xl p-4 mb-5">
-        <Text className="text-white dark:text-zinc-950 font-semibold mb-2">
+      <View className={`rounded-3xl p-4 mb-5 ${cardSurface}`}>
+        <Text className={`${titleText} font-semibold mb-2`}>
           Preferencias del usuario ({userId})
         </Text>
 
@@ -275,22 +287,22 @@ export default function AIRecipes() {
             <Pressable
               key={option.key}
               onPress={() => togglePreference(option.key)}
-              className={`rounded-3xl p-4 mb-3 flex-row items-center justify-between ${isActive ? 'bg-emerald-600 dark:bg-emerald-600' : 'bg-zinc-800 dark:bg-zinc-200 opacity-70'}`}
+              className={`rounded-3xl p-4 mb-3 flex-row items-center justify-between border ${isActive ? 'bg-emerald-600 border-emerald-500' : 'bg-zinc-800 dark:bg-zinc-100 border-zinc-700 dark:border-zinc-200 opacity-100'}`}
             >
               <View className="flex-row items-center gap-3">
-                <View className={`w-12 h-12 rounded-3xl items-center justify-center ${isActive ? 'bg-emerald-700 dark:bg-emerald-600' : 'bg-zinc-700 dark:bg-zinc-300'}`}>
+                <View className={`w-12 h-12 rounded-3xl items-center justify-center ${isActive ? 'bg-emerald-700' : 'bg-zinc-700 dark:bg-zinc-200 border border-zinc-600 dark:border-zinc-300'}`}>
                   <Text className="text-2xl">{option.icon}</Text>
                 </View>
                 <View>
-                  <Text className="text-white font-semibold text-base">
+                  <Text className={`${isActive ? 'text-white' : titleText} font-semibold text-base`}>
                     {option.label}
                   </Text>
-                  <Text className="text-zinc-300 text-xs">
+                  <Text className={`${isActive ? 'text-white/90' : bodyText} text-xs`}>
                     {isActive ? 'Activado' : option.disabledLabel}
                   </Text>
                 </View>
               </View>
-              <Text className={`text-sm font-semibold ${isActive ? 'text-white' : 'text-zinc-400'}`}>
+              <Text className={`text-sm font-semibold ${isActive ? 'text-white' : mutedText}`}>
                 {isActive ? 'Sí' : 'No'}
               </Text>
             </Pressable>
@@ -300,7 +312,7 @@ export default function AIRecipes() {
         <Pressable
           onPress={handleSavePreferences}
           disabled={prefsLoading}
-          className="bg-emerald-600 py-3 rounded-xl"
+          className="bg-emerald-600 py-3 rounded-2xl shadow-sm shadow-emerald-900/10"
         >
           <Text className="text-white text-center font-semibold">
             {prefsLoading ? 'Guardando...' : 'Guardar preferencias'}
@@ -308,7 +320,7 @@ export default function AIRecipes() {
         </Pressable>
 
         {!!prefsMessage && (
-          <Text className="text-zinc-300 mt-3 text-xs">
+          <Text className={`${bodyText} mt-3 text-xs`}>
             {prefsMessage}
           </Text>
         )}
@@ -320,12 +332,12 @@ export default function AIRecipes() {
         onChangeText={setIngredientsText}
         placeholder="Ej: Tengo tomate, cebolla, ajo y aceite de oliva"
         placeholderTextColor="#71717a"
-        className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 rounded-2xl p-4 min-h-[120px] mb-5"
+        className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 border border-zinc-800 dark:border-zinc-200 rounded-3xl p-4 min-h-[120px] mb-5 shadow-sm shadow-black/20 dark:shadow-zinc-300/30"
       />
 
       <Pressable
         onPress={handleRecommend}
-        className="py-4 rounded-2xl bg-indigo-600"
+        className="py-4 rounded-2xl bg-indigo-600 dark:bg-indigo-500 shadow-lg shadow-indigo-900/20"
       >
         <Text className="text-white text-center font-semibold">
           {loading ? 'Buscando...' : 'Buscar receta'}
@@ -333,7 +345,7 @@ export default function AIRecipes() {
       </Pressable>
 
       {!!error && (
-        <Text className="text-red-400 mt-4">
+        <Text className="text-red-500 dark:text-red-400 mt-4">
           {error}
         </Text>
       )}
@@ -346,81 +358,100 @@ export default function AIRecipes() {
       )}
 
       {recipe && (
-        <View className="bg-zinc-900 dark:bg-zinc-100 rounded-3xl p-5 mt-8">
+        <View className={`rounded-3xl p-5 mt-8 ${cardSurface}`}>
 
-          <Text className="text-white dark:text-zinc-950 text-2xl font-bold mb-3">
+          <Text className={`${titleText} text-2xl font-bold mb-3`}>
             {recipe.Title || recipe.title || 'Recomendación'}
           </Text>
 
-          <Text className="text-indigo-400 mb-4">
+          <Text className="text-indigo-400 dark:text-indigo-500 mb-4">
             Similitud: {similarityValue != null ? `${similarityValue}%` : 'N/A'}
           </Text>
 
-          <View className="bg-zinc-800 dark:bg-zinc-200 rounded-2xl p-4 mb-4">
-            <Text className="text-white dark:text-zinc-950 font-semibold mb-1">
+          <View className={`rounded-2xl p-4 mb-4 ${cardMutedSurface}`}>
+            <Text className={`${titleText} font-semibold mb-1`}>
               Valoraciones
             </Text>
-            <Text className="text-zinc-300 dark:text-zinc-700 text-sm">
+            <Text className={`${bodyText} text-sm`}>
               Cantidad: {ratingSummary?.ratingCount ?? 0}
             </Text>
-            <Text className="text-zinc-300 dark:text-zinc-700 text-sm">
+            <Text className={`${bodyText} text-sm`}>
               Media: {ratingSummary?.averageRating != null ? `${ratingSummary.averageRating} / 5` : 'Aún sin valoraciones'}
             </Text>
-            <Text className="text-zinc-300 dark:text-zinc-700 text-sm mt-1">
+            <Text className={`${bodyText} text-sm mt-1`}>
               {ratingSummary?.userHasRated
                 ? `Ya la valoraste con ${ratingSummary.userRating} / 5`
                 : 'Todavía no la has valorado'}
             </Text>
+
+            <View className="mt-4 gap-2">
+              {[5, 4, 3, 2, 1].map((value) => (
+                <View key={value} className="flex-row items-center justify-between">
+                  <Text className={`${bodyText} text-sm font-medium`}>
+                    {value} estrella{value > 1 ? 's' : ''}
+                  </Text>
+                  <Text className={`${bodyText} text-sm font-semibold`}>
+                    {ratingSummary?.ratingBreakdown?.[value] ?? 0}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
 
-          <Text className="text-white font-semibold mb-2">
+          <Text className={`${titleText} font-semibold mb-2`}>
             Ingredientes
           </Text>
 
           {ingredientsList.map((ingredient, index) => (
             <Text
               key={index}
-              className="text-zinc-300 mb-1"
+              className={`${bodyText} mb-1`}
             >
               • {ingredient}
             </Text>
           ))}
 
-          <Text className="text-white font-semibold mt-5 mb-2">
+          <Text className={`${titleText} font-semibold mt-5 mb-2`}>
             Categorías
           </Text>
 
-          <Text className="text-zinc-300">
+          <Text className={bodyText}>
             {tagsList.join(', ')}
           </Text>
 
-          <Text className="text-white font-semibold mt-5 mb-2">
+          <Text className={`${titleText} font-semibold mt-5 mb-2`}>
             Preparación
           </Text>
 
-          <Text className="text-zinc-300">
+          <Text className={bodyText}>
             {stepsList.join('\n\n')}
           </Text>
 
-          <Text className="text-white font-semibold mt-5 mb-2">
+          <Text className={`${titleText} font-semibold mt-5 mb-2`}>
             Valora esta receta
           </Text>
+
+          {isGuestUser && (
+            <Text className="text-amber-300 dark:text-amber-600 text-xs mb-3">
+              Inicia sesión para poder valorar recetas.
+            </Text>
+          )}
 
           <View className="flex-row gap-2">
             {[1, 2, 3, 4, 5].map((value) => (
               <Pressable
                 key={value}
                 onPress={() => handleRateRecipe(value)}
-                disabled={ratingLoading}
-                className={`px-3 py-2 rounded-lg ${rating === value ? 'bg-amber-500' : 'bg-zinc-700'}`}
+                disabled={ratingLoading || isGuestUser}
+                className={`px-3 py-2 rounded-lg border ${rating === value ? 'bg-amber-500 border-amber-400' : 'bg-zinc-700 dark:bg-zinc-200 border-zinc-600 dark:border-zinc-300'}`}
               >
-                <Text className="text-white font-semibold">{value}</Text>
+                <Text className={`${rating === value ? 'text-white' : titleText} font-semibold`}>{value}</Text>
               </Pressable>
             ))}
           </View>
 
           {!!ratingMessage && (
-            <Text className="text-zinc-300 mt-3 text-xs">
+            <Text className={`${bodyText} mt-3 text-xs`}>
               {ratingMessage}
             </Text>
           )}
