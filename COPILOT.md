@@ -1,6 +1,7 @@
 # COPILOT.md - Project Guide for DIET-IA
 
-Author: Ismael Torres González
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
 
 This file is the working guide for the DIET-IA repository. Keep it aligned with the actual codebase and avoid inventing commands, ports, routes, or folders that do not exist.
 

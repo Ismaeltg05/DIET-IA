@@ -9,6 +9,23 @@ import pandas as pd
 from sentence_transformers import SentenceTransformer
 
 
+"""
+recipe_ai.py
+------------
+Implementación del motor de similitud de recetas basado en embeddings.
+
+Claves:
+- Procesa el dataset de recetas, normalizando ingredientes y pasos.
+- Construye embeddings para cada receta y permite buscar similitudes por
+    producto punto entre el vector query y la matriz de embeddings.
+- Proporciona payloads enriquecidos con heurísticas dietéticas (contiene
+    lactosa, gluten, vegetarianismo, etc.) para uso en servicios externos.
+
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+"""
+
+
 def _to_list(value):
     if isinstance(value, list):
         return value
@@ -23,6 +40,12 @@ def _to_list(value):
                 pass
         return [value]
     return []
+
+
+# Convenciones:
+# - Muchas funciones auxiliares aceptan `str` o `list` y devuelven estructuras
+#   estables (listas o strings limpios) para que el flujo principal trabaje
+#   con tipos previsibles.
 
 
 def _join_ingredients(value) -> str:
@@ -106,6 +129,9 @@ class RecipeSimilarityAI:
         self.embedder = self._load_embedder()
         self.recipes = self._load_recipes()
         self.recipe_embeddings = self._build_recipe_embeddings()
+
+
+    # ====== Carga y preprocesamiento ======
 
     def _resolve_dataset_path(self) -> str:
         processed_candidates = [

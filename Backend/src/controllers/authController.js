@@ -1,8 +1,19 @@
+/*
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+*/
+
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 
+// Email regex simple para validaciones en el endpoint
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * register
+ * - Valida campos mínimos, cifra la contraseña y crea el usuario.
+ * - Responde 409 si el email ya existe.
+ */
 exports.register = async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
@@ -48,6 +59,11 @@ exports.register = async (req, res) => {
   }
 };
 
+/**
+ * login
+ * - Valida credenciales y devuelve el identificador de usuario.
+ * - En esta versión no se emite token JWT; se podría añadir fácilmente.
+ */
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;

@@ -3,6 +3,10 @@ import { Text, View } from 'react-native';
 interface EditScreenInfoProps {
   path: string;
 }
+/*
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+*/
 
 export const EditScreenInfo: React.FC<EditScreenInfoProps> = ({ path }) => {
   const title = 'Open up the code for this screen:';

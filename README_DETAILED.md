@@ -1,4 +1,7 @@
 DIET-IA — Documentación Detallada
+
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
 =================================
 
 Resumen

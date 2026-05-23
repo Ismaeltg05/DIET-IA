@@ -1,3 +1,8 @@
+/*
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+*/
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Appearance, Platform, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';

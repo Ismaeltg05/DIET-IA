@@ -1,3 +1,8 @@
+/*
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+*/
+
 import { Text, View, Pressable, Image, Animated, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';

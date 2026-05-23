@@ -19,6 +19,24 @@ except ImportError as e:
     logging.error(f"Failed to import RecipeSimilarityAI: {e}")
     RecipeSimilarityAI = None
 
+
+"""
+Backend AI service (FastAPI)
+----------------------------
+Proporciona endpoints que integran:
+- Un motor AI (`RecipeSimilarityAI`) para recomendaciones.
+- Almacenamiento de preferencias (HBase con fallback local).
+- Envío de ratings mediante Kafka.
+- Ejecución asíncrona de jobs Spark.
+
+El servicio intenta cargar el AI model en background para evitar bloqueos
+during startup; además incluye funciones de verificación de dependencias
+y helpers para robustez en entornos distribuidos.
+
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+"""
+
 # --- CONFIGURATION ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -47,7 +65,12 @@ PREFERENCES_FALLBACK_STORE: Dict[str, Dict[str, str]] = {}
 import asyncio
 
 async def _init_ai_background():
-    """Initialize the AI model in a background thread to avoid blocking import/startup."""
+    """Initialize the AI model in a background thread to avoid blocking import/startup.
+
+    Usa `run_in_executor` para llamar al constructor de `RecipeSimilarityAI` sin
+    bloquear el event loop. Esto es útil cuando el costoso `__init__` carga
+    artefactos grandes desde disco.
+    """
     global ai
     if not RecipeSimilarityAI:
         logger.warning("RecipeSimilarityAI not available")
@@ -64,8 +87,8 @@ async def _init_ai_background():
 def ensure_ai_loaded() -> bool:
     """Load AI model on-demand if it is not ready yet.
 
-    This prevents transient 503 responses when the first requests arrive
-    before background startup initialization finishes.
+    Esto previene respuestas 503 temporales si la primera petición llega antes
+    de que la inicialización en background haya terminado.
     """
     global ai
 
@@ -88,6 +111,7 @@ def ensure_ai_loaded() -> bool:
         except Exception as e:
             logger.error(f"✗ On-demand AI model load failed: {e}")
             return False
+
 
 # --- KAFKA PRODUCER INITIALIZATION ---
 
@@ -114,7 +138,7 @@ producer = None
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize Kafka producer on startup"""
+    """Initialize Kafka producer on startup and start AI background init."""
     global producer
     
     # Wait for Kafka to be ready

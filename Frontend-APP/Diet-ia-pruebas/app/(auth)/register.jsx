@@ -1,3 +1,8 @@
+/*
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+*/
+
 import { View, Text, TextInput, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -14,11 +19,13 @@ export default function Register() {
   const [password, setPassword] = useState('');
 
   const handleRegister = async () => {
+    // Llamada al backend para crear un nuevo usuario
     try {
       await registerUser(name, email, password, phone);
 
       Alert.alert('Éxito', 'Usuario creado');
 
+      // Redirigir a login para autenticar al nuevo usuario
       router.push('/(auth)/login');
 
     } catch (error) {

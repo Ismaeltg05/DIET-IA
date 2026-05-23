@@ -1,3 +1,8 @@
+/*
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+*/
+
 import { useEffect, useState } from 'react';
 import {
   View,
@@ -22,6 +27,7 @@ const toBool = (value) => {
 };
 
 export default function Profile() {
+  // Estado del perfil: id, nombre, preferencias y listas del usuario
   const [userId, setUserId] = useState('guest');
   const [userName, setUserName] = useState('Usuario');
   const [preferences, setPreferences] = useState({
@@ -76,6 +82,7 @@ export default function Profile() {
         setUserId('guest');
       }
 
+      // Intentar recuperar preferencias del backend; si falla, usar valores por defecto
       try {
         const data = await getUserPreferences(resolvedUserId);
         const loadedPrefs = data?.preferences || {};

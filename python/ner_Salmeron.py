@@ -1,12 +1,18 @@
-'''
- * @file Register.jsx
- * @description Implementation of a Named Entity Recognition (NER) model using BERT.
- * The code includes data loading, dataset preparation, model training with class weights,
- * and evaluation using the seqeval library for entity-level metrics.
- * @author Ismael Torres González, Francisco José Salmerón Puig
- * @comments Ismael Torres González
- *'''
-# ner_Salmeron.py
+"""
+ner_Salmeron.py
+---------------
+Entrenamiento de un modelo NER basado en BERT para detección de ingredientes.
+
+Contenido y responsabilidades:
+- Cargar splits JSON (`train.json`, `val.json`) generados por el generador sintético.
+- Crear `Dataset` PyTorch que alinea tokens con etiquetas BIO para entrenamiento.
+- Construir pesos de clase para mitigar desbalance entre etiquetas.
+- Entrenar y evaluar usando métricas por entidad (seqeval).
+
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+"""
+
 # ────────────────────────────────────────────────────────────────────────
 # CONFIG
 # ────────────────────────────────────────────────────────────────────────
@@ -106,6 +112,13 @@ class NERDataset(Dataset):
             "labels":         torch.tensor(aligned_labels, dtype=torch.long),
         }
 
+
+# Nota importante sobre `__getitem__`:
+# - El tokenizador puede dividir palabras en sub-tokens; por eso se usa
+#   `word_ids()` para alinear las etiquetas de palabra al layout de sub-tokens.
+# - Las posiciones que no corresponden a la primera sub-palabra se etiquetan
+#   con -100 para que `CrossEntropyLoss(ignore_index=-100)` las ignore.
+
 # ────────────────────────────────────────────────────────────────────────
 # CLASS WEIGHTS
 # ────────────────────────────────────────────────────────────────────────
@@ -154,6 +167,11 @@ def evaluate(model, loader, id_to_label, loss_fn):
     report    = classification_report(all_true, all_pred)
     avg_loss  = total_loss / max(len(loader), 1)
     return avg_loss, entity_f1, report
+
+
+# Comentarios generales sobre entrenamiento:
+# - Se usa `CrossEntropyLoss` con `ignore_index=-100` para saltar subtokens.
+# - `build_class_weights` intenta compensar el desbalance entre etiquetas.
 
 # ────────────────────────────────────────────────────────────────────────
 # MAIN

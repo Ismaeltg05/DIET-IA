@@ -1,3 +1,11 @@
+##
+# Autor: Ismael Torres González y Francisco J. Salmerón Puig
+# Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+#
+# Este archivo `docker-compose.yaml` orquesta los contenedores necesarios
+# para ejecutar la aplicación localmente (base de datos, mensajería, HBase,
+# Spark, microservicios Python/Node y proxy Nginx). Las variables y puertos
+# reflejan la configuración esperada por los servicios del backend.
 services:
   # --- DATABASE & STORAGE ---
   mongo:

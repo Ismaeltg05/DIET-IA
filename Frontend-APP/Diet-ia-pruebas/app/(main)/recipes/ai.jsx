@@ -1,3 +1,8 @@
+/*
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+*/
+
 import { useEffect, useState } from 'react';
 import {
   View,
@@ -19,6 +24,7 @@ import {
   saveUserPreferences
 } from '../../../services/ai';
 
+// Convierte valores flexibles (string con separadores o array) en array limpio
 const toArray = (value) => {
   if (Array.isArray(value)) return value;
   if (typeof value === 'string') {
@@ -31,6 +37,11 @@ const toArray = (value) => {
 };
 
 export default function AIRecipes() {
+  // --- Estado local ---
+  // `ingredientsText`: texto libre que el usuario introduce (lista separada por comas)
+  // `loading`: bandera para indicar búsqueda en curso
+  // `recipe`: objeto con la respuesta de recomendación del backend
+  // `health`: estado del servicio AI (checking/healthy/offline)
   const [ingredientsText, setIngredientsText] = useState('');
   const [loading, setLoading] = useState(false);
   const [recipe, setRecipe] = useState(null);
@@ -102,6 +113,7 @@ export default function AIRecipes() {
         setUserId('guest');
       }
 
+      // Consultar estado del microservicio AI (FastAPI)
       try {
         const data = await getAiHealth();
         setHealth(data.overall || 'unknown');
@@ -139,6 +151,7 @@ export default function AIRecipes() {
 
       const recipeId = String(recipe.recipe_id || recipe.id || recipe._id || recipe.Title || 'unknown');
 
+      // Cargar resumen de valoraciones para la receta actual
       try {
         const data = await getRecipeRatingSummary({
           userId: userId || 'guest',
@@ -156,6 +169,7 @@ export default function AIRecipes() {
   }, [recipe, userId]);
 
   const handleRecommend = async () => {
+    // Evitar doble envío o búsqueda vacía
     if (!ingredientsText.trim() || loading) return;
 
     try {
@@ -163,6 +177,7 @@ export default function AIRecipes() {
       setLoading(true);
       setRecipe(null);
 
+      // Normalizar input a array de ingredientes
       const ingredients = ingredientsText
         .split(',')
         .map(i => i.trim())
@@ -170,6 +185,7 @@ export default function AIRecipes() {
 
       const userId = await getUserId();
 
+      // Llamada al servicio AI para obtener la mejor receta
       const data = await recommendRecipe({
         ingredients,
         userId: userId || 'guest'

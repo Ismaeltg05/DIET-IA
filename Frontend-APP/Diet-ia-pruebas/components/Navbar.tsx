@@ -1,3 +1,8 @@
+/*
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+*/
+
 import React from 'react';
 import { View, TouchableOpacity, Text } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
@@ -20,6 +25,7 @@ const Navbar = () => {
   };
 
   return (
+    // Barra de navegación inferior. Usa icons emoji y rutas de `expo-router`.
     <View className={`flex-row justify-around items-center px-2 py-2 ${isDark ? 'bg-zinc-950/95 border-t border-zinc-800 shadow-black/20' : 'bg-white/95 border-t border-zinc-200 shadow-zinc-200/70'} safe-area-inset-b`}>
       {navItems.map((item) => (
         <TouchableOpacity

@@ -1,25 +1,63 @@
-﻿import json
+﻿"""
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+"""
+
+import json
 import re
 import os
 import random
 
+"""
+generatetraindata.py
+---------------------
+Generador sintético de datos para entrenamiento de un modelo NER (reconocimiento
+de ingredientes en texto). El script crea oraciones naturales simuladas que
+contienen ingredientes mezclados con palabras irrelevantes (intrusos) y
+devuelve pares `tokens`/`labels` en formato BIO (B-FOOD, I-FOOD, O).
+
+Objetivo:
+- Producir ejemplos que cubran múltiples patrones lingüísticos donde aparecen
+  ingredientes (listas cortas, oraciones largas y ruidosas, contextos mixtos,
+  y listas con palabras intrusas).
+- Incluir ejemplos negativos sin ingredientes reales para entrenar robustez.
+
+Salida esperada:
+- JSON con listas de tokens y etiquetas, por ejemplo:
+  {"tokens": ["i","have","tomato"], "labels": ["O","O","B-FOOD"]}
+
+Notas de diseño y supuestos:
+- Normalizamos eliminando puntuación y pasando a minúsculas en `tokenize()`.
+- Las palabras en `STOP_WORDS` nunca deben considerarse ingredientes.
+- `INTRUDERS` simulan palabras no alimentarias que pueden aparecer en listas.
+- El etiquetado usa el esquema BIO (Beginning / Inside / Outside).
+"""
+
 # -------------------------
 # INGREDIENTS
 # -------------------------
-BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATASET_DIR = os.path.join(BASE_DIR, "../datasets")
+# Carga la lista maestra de ingredientes (JSON). El archivo debe existir en
+# ../datasets/ALL_INGREDIENTS.json respecto a este script.
 with open(os.path.join(DATASET_DIR, "ALL_INGREDIENTS.json"), encoding="utf-8-sig") as f:
     ingredients = json.load(f)
 
 # -------------------------
 # CONFIG
 # -------------------------
-N_SAMPLES      = 100000   # more data → better generalization
+# Número de muestras por defecto cuando se ejecuta como script.
+N_SAMPLES = 100000  # a más datos, mejor cobertura para el modelo
+# Proporción de ejemplos negativos (sin ingredientes etiquetables).
 NEGATIVE_RATIO = 0.20
 
+
 # -------------------------
-# STOP WORDS — never tag these
+# STOP WORDS — nunca etiquetar estas palabras como ingredientes
 # -------------------------
+# Conjunto de tokens comunes, muletillas o palabras funcionales que aparecen en
+# oraciones naturales pero no son ingredientes. Se usan para filtrar coincidencias
+# espurias cuando comparamos tokens del ingrediente con los tokens de la frase.
 STOP_WORDS = {
     "and", "or", "with", "some", "a", "an", "the", "like", "of", "for",
     "maybe", "i", "think", "not", "sure", "honestly", "kind", "idk",
@@ -39,9 +77,13 @@ STOP_WORDS = {
     "should", "might", "will", "also", "still", "even", "though",
 }
 
+
 # -------------------------
 # INTRUDERS
 # -------------------------
+# Palabras que se usarán como 'ruido' en listas para enseñar al modelo a
+# distinguir entre alimentos reales y palabras irrelevantes (nombres, objetos,
+# emociones, etc.).
 INTRUDERS = [
     "ismael", "carlos", "pedro", "john", "maria", "luis", "anna", "jorge",
     "sofia", "david", "laura", "miguel", "sara", "pablo", "elena",
@@ -52,13 +94,16 @@ INTRUDERS = [
     "monday", "friday", "python", "music", "game", "word", "idea",
 ]
 
-# -------------------------
-# CONTEXTS — the key fix
-# Each context wraps a single ingredient or list.
-# We massively expand these so each ingredient appears in many contexts.
-# -------------------------
 
-# Contexts for a SINGLE ingredient {ing}
+# -------------------------
+# CONTEXTOS (templates) — generan oraciones naturales
+# -------------------------
+# Para cada ingrediente individual y para listas de ingredientes definimos
+# plantillas (frases) que se combinan aleatoriamente con los ingredientes.
+# Esto permite muchas variantes lingüísticas por cada ingrediente.
+
+# Contextos para un SOLO ingrediente (reemplazan {ing}) — frases cortas,
+# expresiones coloquiales, ubicaciones en la oración, etc.
 SINGLE_CONTEXTS = [
     # found/have
     "I found some {ing}",
@@ -137,7 +182,7 @@ SINGLE_CONTEXTS = [
     "lots of {ing}",
 ]
 
-# Contexts for a LIST of ingredients {ings}
+# Contextos para LISTAS de ingredientes (reemplazan {ings} por una lista)
 LIST_CONTEXTS = [
     "I want something with {ings}",
     "I need a quick meal using {ings}",
@@ -177,7 +222,10 @@ LIST_CONTEXTS = [
     "dinner ideas using {ings}?",
 ]
 
-# Filler words between ingredient sub-phrases in long sentences
+
+# -------------------------
+# FILLERS / STARTERS / ENDERS — para crear oraciones más naturales y ruidosas
+# -------------------------
 FILLERS = [
     "and honestly", "like maybe", "probably", "idk also", "or something",
     "and also like", "and perhaps", "I think also", "and definitely",
@@ -200,21 +248,71 @@ SENTENCE_ENDERS = [
     "not sure though", "idk", "I guess", "", "", "", "",
 ]
 
+
 # -------------------------
 # TOKENIZER
 # -------------------------
 def tokenize(text):
+    """
+    Tokenizador muy simple usado en este generador.
+
+    - Normaliza a minúsculas.
+    - Elimina cualquier carácter no alfabético ni espacios (quita puntuación,
+      números y símbolos).
+    - Separa por espacios.
+
+    Nota: Este tokenizador es intencionalmente simple porque los datos serán
+    usados para entrenar/depurar un flujo NER donde el vocabulario principal
+    son nombres de ingredientes (palabras alfabéticas).
+
+    Parámetros:
+    - text (str): cadena de entrada
+
+    Retorna:
+    - list[str]: lista de tokens en minúsculas sin puntuación
+    """
     return re.sub(r"[^a-zA-Z\s]", "", text.lower()).split()
+
 
 # -------------------------
 # BIO TAGGING
 # -------------------------
 def bio_tag(tokens, ings):
+    """
+    Etiqueta una secuencia de `tokens` con el esquema BIO para los
+    ingredientes provistos en `ings`.
+
+    Algoritmo:
+    - Para cada ingrediente en `ings`, lo normaliza igual que los tokens
+      (quita puntuación y pasa a minúsculas), luego intenta emparejar la
+      secuencia de tokens del ingrediente con una subsecuencia de `tokens`.
+    - Si hay coincidencia exacta, marca la primera palabra como `B-FOOD` y
+      las siguientes como `I-FOOD`.
+    - Ignora ingredientes vacíos o aquellos cuyo token aparece en
+      `STOP_WORDS` (así evitamos etiquetar "and", "with", etc.).
+
+    Ejemplo:
+    tokens = ['i', 'have', 'tomato']
+    ings = ['tomato']
+    => labels = ['O', 'O', 'B-FOOD']
+
+    Parámetros:
+    - tokens (list[str]): tokens ya normalizados (resultado de `tokenize`).
+    - ings (list[str]): lista de ingredientes (textuales), pueden contener
+      multi-palabra (ej. 'olive oil').
+
+    Retorna:
+    - list[str]: lista de etiquetas BIO de la misma longitud que `tokens`.
+    """
     labels = ["O"] * len(tokens)
     for ing in ings:
+        # Normalizamos el ingrediente exactamente igual que en tokenize
         ing_tokens = re.sub(r"[^a-zA-Z\s]", "", ing.lower()).split()
+        # Saltamos ingredientes vacíos o no informativos
         if not ing_tokens or any(t in STOP_WORDS for t in ing_tokens):
             continue
+
+        # Buscamos una coincidencia exacta de la subsecuencia
         for i in range(len(tokens) - len(ing_tokens) + 1):
             if tokens[i:i + len(ing_tokens)] == ing_tokens:
                 labels[i] = "B-FOOD"
@@ -222,10 +320,19 @@ def bio_tag(tokens, ings):
                     labels[i + j] = "I-FOOD"
     return labels
 
+
 # -------------------------
 # FORMAT INGREDIENT LIST
 # -------------------------
 def format_list(ings):
+    """
+    Devuelve una representación textual natural de una lista de ingredientes.
+
+    - Si hay 1 elemento devuelve ese elemento.
+    - Si hay 2 elementos, usa 'and' o ', ' al azar para variedad.
+    - Si hay >=3 elementos, varía el estilo: Oxford comma, coma simple o todo
+      con 'and' para simular distintas formas naturales de listar.
+    """
     if len(ings) == 1:
         return ings[0]
     elif len(ings) == 2:
@@ -241,22 +348,29 @@ def format_list(ings):
         else:
             return " and ".join(ings)
 
+
 # -------------------------
-# GENERATORS
+# GENERATORS (crean oraciones de distinto tipo)
 # -------------------------
 
 def generate_simple(ings):
-    """Short direct sentence with a list of ingredients."""
+    """
+    Genera una frase corta usando una de las plantillas de LIST_CONTEXTS.
+
+    Este estilo cubre entradas tipo: 'I want something with tomato, cheese'.
+    """
     return random.choice(LIST_CONTEXTS).format(ings=format_list(ings))
 
 
 def generate_long_noisy(ings):
     """
-    Long sentence where each ingredient appears in its own sub-phrase,
-    separated by fillers. This covers cases like:
-    'I found some tomato ... and maybe garlic ... and definitely olive oil'
+    Genera oraciones largas y ruidosas donde cada ingrediente aparece en su
+    propio sub-fragmento, intercalado con `FILLERS` y posibles starters/enders.
+
+    Útil para simular conversaciones o textos informales: el modelo aprende a
+    localizar ingredientes distribuidos en una oración extensa y ruidosa.
     """
-    parts   = []
+    parts = []
     starter = random.choice(SENTENCE_STARTERS)
     if starter:
         parts.append(starter)
@@ -277,21 +391,22 @@ def generate_long_noisy(ings):
 
 def generate_list_with_intruders(ings):
     """
-    Mixes real ingredients with non-food intruder words in a list.
-    Teaches: not every word in a list is food.
+    Inserta palabras intrusas (no alimentarias) en la lista de ingredientes para
+    enseñar al modelo a no etiquetar siempre cada token de una lista como
+    ingrediente.
     """
-    n_intruders  = random.randint(1, 2)
+    n_intruders = random.randint(1, 2)
     intruder_words = random.sample(INTRUDERS, n_intruders)
-    all_items    = ings + intruder_words
+    all_items = ings + intruder_words
     random.shuffle(all_items)
     return random.choice(LIST_CONTEXTS).format(ings=format_list(all_items))
 
 
 def generate_mixed_contexts(ings):
     """
-    Each ingredient gets its OWN varied context within one sentence.
-    Covers cases where the same ingredient appears after different triggers.
-    Example: 'I found some tomato and I was thinking garlic and maybe olive oil'
+    Para cada ingrediente genera su propio contexto dentro de la misma
+    oración, separando por conjunciones simples. Cubre oraciones donde cada
+    ingrediente aparece en formulaciones diferentes.
     """
     parts = []
     random.shuffle(ings)
@@ -305,6 +420,8 @@ def generate_mixed_contexts(ings):
 # -------------------------
 # NEGATIVE TEMPLATES
 # -------------------------
+# Frases que no contienen ingredientes identificables; se usan para crear
+# ejemplos 'negativos' que mejoran la precisión del clasificador/etiquetador.
 NEGATIVE_TEMPLATES = [
     "I want a recipe but I don't know what to use",
     "Give me a random dinner idea",
@@ -359,29 +476,53 @@ NEGATIVE_TEMPLATES = [
     "I have no idea what to cook",
 ]
 
+
 # -------------------------
 # SAMPLE GENERATOR
 # -------------------------
 def sample_ingredients():
+    """
+    Retorna una muestra aleatoria de k ingredientes sin reemplazo, donde k es
+    seleccionado con probabilidades prefijadas para favorecer listas de
+    longitud realista (1-5 ingredientes).
+    """
     k = random.choices([1, 2, 3, 4, 5], weights=[0.15, 0.25, 0.30, 0.20, 0.10])[0]
     return random.sample(ingredients, k)
 
+
 def generate_example():
+    """
+    Genera un solo ejemplo de entrenamiento.
+
+    Flujo:
+    1. Con probabilidad `NEGATIVE_RATIO` crea un ejemplo negativo (sin
+       ingredientes) usando `NEGATIVE_TEMPLATES`.
+    2. Si no es negativo, toma 1-5 ingredientes con `sample_ingredients()` y
+       selecciona uno de los cuatro estilos de generación para producir el
+       texto:
+         - `generate_simple` (lista corta)
+         - `generate_long_noisy` (oración larga y dispersa)
+         - `generate_mixed_contexts` (cada ingrediente con contexto distinto)
+         - `generate_list_with_intruders` (lista con palabras intrusas)
+    3. Tokeniza el texto y genera las etiquetas BIO con `bio_tag`.
+
+    Retorna un dict: {"tokens": [...], "labels": [...]}.
+    """
     if random.random() < NEGATIVE_RATIO:
-        text   = random.choice(NEGATIVE_TEMPLATES)
+        text = random.choice(NEGATIVE_TEMPLATES)
         tokens = tokenize(text)
         return {"tokens": tokens, "labels": ["O"] * len(tokens)}
 
-    ings  = sample_ingredients()
+    ings = sample_ingredients()
 
-    # 4 styles — each one teaches different context patterns
+    # 4 estilos — cada uno enseña patrones distintos al modelo
     style = random.random()
     if style < 0.25:
-        text = generate_simple(ings)           # short list
+        text = generate_simple(ings)  # short list
     elif style < 0.50:
-        text = generate_long_noisy(ings)       # long scattered sentence
+        text = generate_long_noisy(ings)  # long scattered sentence
     elif style < 0.75:
-        text = generate_mixed_contexts(ings)   # each ing in own context
+        text = generate_mixed_contexts(ings)  # each ing in own context
     else:
         text = generate_list_with_intruders(ings)  # intruder words in list
 
@@ -389,30 +530,47 @@ def generate_example():
     labels = bio_tag(tokens, ings)
     return {"tokens": tokens, "labels": labels}
 
+
 # -------------------------
 # DATASET
 # -------------------------
 def generate_dataset(n=N_SAMPLES):
+    """Genera `n` ejemplos y los mezcla aleatoriamente."""
     data = [generate_example() for _ in range(n)]
     random.shuffle(data)
     return data
 
+
 def split(data):
-    n     = len(data)
+    """Divide los datos en `train`/`val`/`test` con proporciones 80/10/10."""
+    n = len(data)
     train = data[:int(0.8 * n)]
-    val   = data[int(0.8 * n):int(0.9 * n)]
-    test  = data[int(0.9 * n):]
+    val = data[int(0.8 * n):int(0.9 * n)]
+    test = data[int(0.9 * n):]
     return train, val, test
 
+
 # -------------------------
-# VALIDATION
+# VALIDATION / DEBUG PRINTS
 # -------------------------
 def check_dataset(data, label="dataset"):
-    total    = len(data)
-    empty    = sum(1 for d in data if all(l == "O" for l in d["labels"]))
+    """
+    Imprime estadísticas simples y ejemplos coloreados para inspección rápida.
+
+    Estadísticas:
+    - Total de muestras
+    - Cuántas muestras no tienen etiquetas de comida (solo 'O')
+    - Cuántas veces la palabra 'and' fue etiquetada erróneamente
+
+    También muestra hasta 6 ejemplos largos coloreando B-FOOD (verde) e
+    I-FOOD (cian) para facilitar comprobación visual en consola.
+    """
+    total = len(data)
+    empty = sum(1 for d in data if all(l == "O" for l in d["labels"]))
     has_food = total - empty
-    bad_and  = sum(
-        1 for d in data
+    bad_and = sum(
+        1
+        for d in data
         for tok, lbl in zip(d["tokens"], d["labels"])
         if tok == "and" and lbl != "O"
     )
@@ -432,27 +590,32 @@ def check_dataset(data, label="dataset"):
             for t, l in pairs
         ))
 
+
 # -------------------------
 # SAVE
 # -------------------------
 def save(path, data):
+    """Guarda `data` en `path` como JSON con indentación y unicode intacto."""
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
+
 # -------------------------
-# MAIN
+# MAIN (ejecución como script)
 # -------------------------
 if __name__ == "__main__":
     print("Generating dataset...")
     data = generate_dataset()
     train, val, test = split(data)
 
+    # Comprobaciones rápidas para inspección manual
     check_dataset(train, "TRAIN")
-    check_dataset(val,   "VAL")
-    check_dataset(test,  "TEST")
+    check_dataset(val, "VAL")
+    check_dataset(test, "TEST")
 
+    # Guardado en ../datasets/
     save(os.path.join(DATASET_DIR, "train.json"), train)
-    save(os.path.join(DATASET_DIR, "val.json"),   val)
-    save(os.path.join(DATASET_DIR, "test.json"),  test)
+    save(os.path.join(DATASET_DIR, "val.json"), val)
+    save(os.path.join(DATASET_DIR, "test.json"), test)
 
     print("\nSaved ✔")

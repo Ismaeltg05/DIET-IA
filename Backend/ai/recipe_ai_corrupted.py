@@ -9,6 +9,20 @@ import pandas as pd
 from sentence_transformers import SentenceTransformer
 
 
+"""
+recipe_ai_corrupted.py
+----------------------
+Este archivo contiene una versión 'corrupta' o combinada del código que
+incluye fragmentos duplicados y mezclados con lógica del servicio.
+
+Se conserva en el repositorio para referencia histórica; NO se recomienda
+usar esta versión en producción. Favor de preferir `recipe_ai.py`.
+
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+"""
+
+
 def _to_list(value):
     if isinstance(value, list):
         return value
@@ -90,6 +104,11 @@ def _split_into_steps(text: str) -> List[str]:
         return sentences
 
     return [s]
+
+
+# Nota: a continuación el archivo contiene código repetido y parte de la
+# inicialización del servicio. Mantenerlo como referencia, no como fuente de
+# verdad para la carga del modelo.
 
 
 class RecipeSimilarityAI:
