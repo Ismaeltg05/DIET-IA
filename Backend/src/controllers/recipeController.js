@@ -1,11 +1,24 @@
+/*
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+*/
+
 const Recipe = require("../models/Recipe");
 const RecipeRating = require("../models/recipeRating");
 
+/**
+ * isGuestUser
+ * Comprueba si `userId` representa un usuario invitado/no autenticado.
+ */
 const isGuestUser = (userId) => {
   const normalizedUserId = String(userId || '').trim().toLowerCase();
   return !normalizedUserId || normalizedUserId === 'guest' || normalizedUserId === 'invitado';
 };
 
+/**
+ * buildEmptyBreakdown
+ * Devuelve estructura inicial para el recuento de valoraciones por nota (1-5).
+ */
 const buildEmptyBreakdown = () => ({
   1: 0,
   2: 0,
@@ -14,6 +27,11 @@ const buildEmptyBreakdown = () => ({
   5: 0
 });
 
+/**
+ * buildRatingSummary
+ * Agrega y formatea estadísticas de valoraciones para una receta dada.
+ * - Usa agregaciones de Mongo para calcular promedio y desglose.
+ */
 const buildRatingSummary = async ({ recipeId, userId }) => {
   const [summary] = await RecipeRating.aggregate([
     {
@@ -68,6 +86,10 @@ const buildRatingSummary = async ({ recipeId, userId }) => {
   };
 };
 
+/**
+ * getAllRecipes
+ * Devuelve todas las recetas almacenadas (sin paginación por simplicidad).
+ */
 exports.getAllRecipes = async (req, res) => {
   try {
     const recipes = await Recipe.find();
@@ -85,6 +107,11 @@ exports.getAllRecipes = async (req, res) => {
   }
 };
 
+/**
+ * getRecipeRatings
+ * Devuelve el resumen de valoraciones para `recipeId`.
+ * Acepta `userId` opcional para incluir si el usuario ya valoró.
+ */
 exports.getRecipeRatings = async (req, res) => {
   try {
     const { recipeId } = req.params;
@@ -105,6 +132,10 @@ exports.getRecipeRatings = async (req, res) => {
   }
 };
 
+/**
+ * saveRecipeRating
+ * Valida permisos y rango de rating, y guarda/actualiza la valoración.
+ */
 exports.saveRecipeRating = async (req, res) => {
   try {
     const { recipeId } = req.params;

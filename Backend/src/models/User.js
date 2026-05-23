@@ -1,6 +1,16 @@
+/*
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+*/
+
 const mongoose = require("mongoose");
 const validator = require('validator');
 
+/**
+ * Esquema de usuario básico.
+ * - Incluye validaciones para email y teléfono mediante `validator`.
+ * - `timestamps: true` añade `createdAt` y `updatedAt` automáticamente.
+ */
 const userSchema = new mongoose.Schema({
   name: {
     type: String,

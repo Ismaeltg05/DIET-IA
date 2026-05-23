@@ -1,3 +1,8 @@
+"""
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+"""
+
 import os
 import joblib
 import pandas as pd
@@ -7,6 +12,23 @@ from datetime import datetime
 from sentence_transformers import SentenceTransformer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.model_selection import train_test_split
+
+"""
+train_recommender.py
+---------------------
+Script para entrenar un recomendador de recetas basado en embeddings y KNN.
+
+Pasos principales:
+- Cargar y normalizar el dataset CSV de recetas.
+- Generar embeddings con `SentenceTransformer` a partir de la columna `Features`.
+- Evaluar distintas configuraciones de `n_neighbors` para `NearestNeighbors`.
+- Guardar el mejor modelo, metadatos y artefactos.
+
+Salida:
+- best_nn_model.pkl (modelo KNN)
+- embedder/ (SentenceTransformer serializado)
+- df_recetas_processed.csv (datos procesados)
+"""
 
 
 def load_and_prepare_data(csv_path):
@@ -45,6 +67,11 @@ def load_and_prepare_data(csv_path):
     return df
 
 
+# NOTE:
+# - `Features` se construye uniendo ingredientes; si el dataset ya proporciona
+#   una columna `features`, se respeta más adelante en el flujo principal.
+
+
 def evaluate_recommender(embeddings_train, embeddings_test, categories_train, categories_test, model):
     # Para cada elemento en test, recuperar top-5 y ver si comparte categoría.
     n_queries = min(len(embeddings_test), 3000)
@@ -72,6 +99,11 @@ def evaluate_recommender(embeddings_train, embeddings_test, categories_train, ca
         precision_mean = float('nan')
 
     return float(precision_mean), float(np.mean(sim_values))
+
+
+# Comentario: `evaluate_recommender` calcula una métrica de precisión basada en
+# coincidencia de categoría entre query y vecinos. Si no existen categorías,
+# devuelve NaN en precision y usa la similitud media como señal alternativa.
 
 
 def plot_history(history, output_path):

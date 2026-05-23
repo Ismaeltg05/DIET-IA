@@ -1,3 +1,8 @@
+/*
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+*/
+
 import { buildApiUrl } from './api';
 
 const parseResponseJson = async (response) => {
@@ -116,3 +121,8 @@ export const getAiHealth = async () => {
     fallbackErrorMessage: 'No se pudo consultar el estado de salud del backend AI'
   });
 };
+
+// Observaciones:
+// - `services/ai.js` centraliza llamadas al backend AI (FastAPI).
+// - Las funciones lanzan `Error` cuando la respuesta no es OK; el caller
+//   debe manejar las excepciones y mostrar mensajes al usuario.

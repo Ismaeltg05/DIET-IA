@@ -1,3 +1,8 @@
+"""
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+"""
+
 import os
 import re
 import sys

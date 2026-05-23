@@ -1,3 +1,8 @@
+/*
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+*/
+
 import { View, Text, FlatList, Pressable, ActivityIndicator } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -24,6 +29,7 @@ export default function Recipes() {
           throw new Error(data.error || data.detail || 'No se pudieron cargar las recetas');
         }
 
+        // Normalizar la respuesta: algunos endpoints devuelven {recipes: [...]}
         const normalizedRecipes = Array.isArray(data.recipes)
           ? data.recipes
           : Array.isArray(data)

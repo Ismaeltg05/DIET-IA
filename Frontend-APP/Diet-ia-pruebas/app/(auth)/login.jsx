@@ -1,3 +1,8 @@
+/*
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+*/
+
 import { View, Text, TextInput, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -5,6 +10,7 @@ import { useState } from 'react';
 import { loginUser } from '../../services/auth';
 import '../../global.css';
 
+// Valida formato básico de email
 const validarEmail = (email) => {
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return regex.test(email);
@@ -21,7 +27,7 @@ export default function Login() {
       Alert.alert('Error', 'Por favor, introduce un email válido');
       return;
     }
-
+    // Intentar login contra el servicio remoto
     try {
       const data = await loginUser(email, password);
 
@@ -29,6 +35,7 @@ export default function Login() {
 
       Alert.alert('Éxito', `ID usuario: ${data.userId}`);
 
+      // Redirigir a la pantalla principal
       router.push('/');
 
     } catch (error) {
