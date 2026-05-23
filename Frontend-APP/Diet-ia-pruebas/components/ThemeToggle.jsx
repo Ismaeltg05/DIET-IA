@@ -8,10 +8,10 @@ export default function ThemeToggle() {
   return (
     <Pressable
       onPress={toggleTheme}
-      className={`rounded-full px-4 py-3 self-start ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`}
+      className={`rounded-2xl px-4 py-3 self-start border ${isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-zinc-200 shadow-sm'}`}
     >
       <Text className={`${isDark ? 'text-white' : 'text-zinc-950'} font-semibold`}>
-        {isDark ? 'Modo oscuro' : 'Modo claro'}
+        {isDark ? '🌙 Modo oscuro' : '☀️ Modo claro'}
       </Text>
     </Pressable>
   );

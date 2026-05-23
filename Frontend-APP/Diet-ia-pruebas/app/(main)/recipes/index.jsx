@@ -41,22 +41,32 @@ export default function Recipes() {
     fetchRecipes();
   }, []);
 
-  return (
-    <View className="flex-1 bg-zinc-950 dark:bg-zinc-50 p-4 pb-28">
+  const screenSurface = 'bg-zinc-950 dark:bg-zinc-50';
+  const cardSurface = 'bg-zinc-900 dark:bg-white border border-zinc-800 dark:border-zinc-200 shadow-lg shadow-black/10 dark:shadow-zinc-300/40';
+  const titleText = 'text-white dark:text-zinc-950';
+  const bodyText = 'text-zinc-400 dark:text-zinc-600';
 
-      <Text className="text-white dark:text-zinc-950 text-2xl font-bold mb-4">
-        Recetas 🍲
-      </Text>
+  return (
+    <View className={`flex-1 ${screenSurface} p-4 pb-28`}>
+
+      <View className={`mb-4 rounded-3xl p-5 ${cardSurface}`}>
+        <Text className={`${titleText} text-2xl font-bold mb-2`}>
+          Recetas 🍲
+        </Text>
+        <Text className={`${bodyText} text-sm leading-5`}>
+          Explora la base de datos o usa la IA para encontrar una receta con lo que tengas a mano.
+        </Text>
+      </View>
 
       <Pressable
         onPress={() => router.push('/recipes/ai')}
-        className="bg-indigo-600 p-4 rounded-2xl mb-5"
+        className="bg-indigo-600 dark:bg-indigo-500 p-4 rounded-3xl mb-5 border border-indigo-400/30 shadow-lg shadow-indigo-900/20"
       >
-        <Text className="text-white text-center font-semibold">
+        <Text className="text-white text-center font-semibold text-base">
           Probar recomendador IA 🤖
         </Text>
 
-        <Text className="text-indigo-200 text-center text-xs mt-1">
+        <Text className="text-indigo-100 dark:text-indigo-50/90 text-center text-xs mt-1">
           Escribe tus ingredientes y encuentra una receta
         </Text>
       </Pressable>
@@ -69,7 +79,7 @@ export default function Recipes() {
       )}
 
       {!loading && !!error && (
-        <Text className="text-red-400 mb-4">
+        <Text className="text-red-500 dark:text-red-400 mb-4">
           {error}
         </Text>
       )}
@@ -78,12 +88,12 @@ export default function Recipes() {
         data={recipes}
         keyExtractor={(item, index) => item?._id || String(index)}
         renderItem={({ item }) => (
-          <View className="bg-zinc-800 dark:bg-zinc-200 p-4 rounded-xl mb-3">
-            <Text className="text-white dark:text-zinc-950 font-semibold">
+          <View className={`p-4 rounded-2xl mb-3 ${cardSurface}`}>
+            <Text className={`${titleText} font-semibold`}>
               {item.nvmname || item.name || 'Receta sin nombre'}
             </Text>
 
-            <Text className="text-zinc-400 dark:text-zinc-600 text-xs mt-1">
+            <Text className={`${bodyText} text-xs mt-1`}>
               {item.minutes || 0} min • {item.n_ingredients || 0} ingredientes
             </Text>
           </View>

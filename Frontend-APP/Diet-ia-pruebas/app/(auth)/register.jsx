@@ -28,51 +28,56 @@ export default function Register() {
 
   return (
     <View className="flex-1 justify-center items-center p-4 bg-zinc-950 dark:bg-zinc-50">
-      <Text className="text-2xl font-semibold mb-6 text-white dark:text-zinc-950">
-        Registrarse
-      </Text>
-
-      <TextInput
-        placeholder="Nombre"
-        placeholderTextColor="#71717a"
-        value={name}
-        onChangeText={setName}
-        className="w-full border-b border-zinc-700 dark:border-zinc-300 mb-4 p-2 text-white dark:text-zinc-950 bg-transparent dark:bg-transparent"
-      />
-
-      <TextInput
-        placeholder="Correo electrónico"
-        placeholderTextColor="#71717a"
-        value={email}
-        onChangeText={setEmail}
-        className="w-full border-b border-zinc-700 dark:border-zinc-300 mb-4 p-2 text-white dark:text-zinc-950 bg-transparent dark:bg-transparent"
-      />
-
-      <TextInput
-        placeholder="Teléfono (opcional)"
-        placeholderTextColor="#71717a"
-        value={phone}
-        onChangeText={setPhone}
-        className="w-full border-b border-zinc-700 dark:border-zinc-300 mb-4 p-2 text-white dark:text-zinc-950 bg-transparent dark:bg-transparent"
-      />
-
-      <TextInput
-        placeholder="Contraseña"
-        placeholderTextColor="#71717a"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        className="w-full border-b border-zinc-700 dark:border-zinc-300 mb-6 p-2 text-white dark:text-zinc-950 bg-transparent dark:bg-transparent"
-      />
-
-      <Pressable
-        onPress={handleRegister}
-        className="bg-indigo-600 rounded-full px-6 py-3"
-      >
-        <Text className="text-white font-semibold">
+      <View className="w-full max-w-md rounded-3xl p-6 bg-zinc-900 dark:bg-white border border-zinc-800 dark:border-zinc-200 shadow-xl shadow-black/20">
+        <Text className="text-2xl font-semibold mb-2 text-white dark:text-zinc-950">
           Registrarse
         </Text>
-      </Pressable>
+        <Text className="text-zinc-400 dark:text-zinc-500 mb-6 text-sm">
+          Crea tu cuenta para guardar tus recetas y valoraciones.
+        </Text>
+
+        <TextInput
+          placeholder="Nombre"
+          placeholderTextColor="#71717a"
+          value={name}
+          onChangeText={setName}
+          className="w-full rounded-2xl border border-zinc-700 dark:border-zinc-200 mb-4 px-4 py-3 text-white dark:text-zinc-950 bg-zinc-950 dark:bg-zinc-50"
+        />
+
+        <TextInput
+          placeholder="Correo electrónico"
+          placeholderTextColor="#71717a"
+          value={email}
+          onChangeText={setEmail}
+          className="w-full rounded-2xl border border-zinc-700 dark:border-zinc-200 mb-4 px-4 py-3 text-white dark:text-zinc-950 bg-zinc-950 dark:bg-zinc-50"
+        />
+
+        <TextInput
+          placeholder="Teléfono (opcional)"
+          placeholderTextColor="#71717a"
+          value={phone}
+          onChangeText={setPhone}
+          className="w-full rounded-2xl border border-zinc-700 dark:border-zinc-200 mb-4 px-4 py-3 text-white dark:text-zinc-950 bg-zinc-950 dark:bg-zinc-50"
+        />
+
+        <TextInput
+          placeholder="Contraseña"
+          placeholderTextColor="#71717a"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+          className="w-full rounded-2xl border border-zinc-700 dark:border-zinc-200 mb-6 px-4 py-3 text-white dark:text-zinc-950 bg-zinc-950 dark:bg-zinc-50"
+        />
+
+        <Pressable
+          onPress={handleRegister}
+          className="bg-indigo-600 dark:bg-indigo-500 rounded-2xl px-6 py-4"
+        >
+          <Text className="text-white text-center font-semibold">
+            Registrarse
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
