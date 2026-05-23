@@ -12,6 +12,7 @@ import '../../../global.css';
 import { getUserId } from '../../../services/auth';
 import {
   getAiHealth,
+  getRecipeRatingSummary,
   getUserPreferences,
   rateRecipe,
   recommendRecipe,
@@ -46,6 +47,7 @@ export default function AIRecipes() {
   const [rating, setRating] = useState(0);
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratingMessage, setRatingMessage] = useState('');
+  const [ratingSummary, setRatingSummary] = useState(null);
   const aiReady = health === 'healthy';
 
   const preferenceOptions = [
@@ -121,6 +123,31 @@ export default function AIRecipes() {
     loadInitialState();
   }, []);
 
+  useEffect(() => {
+    const loadRecipeRating = async () => {
+      if (!recipe) {
+        setRatingSummary(null);
+        return;
+      }
+
+      const recipeId = String(recipe.recipe_id || recipe.id || recipe._id || recipe.Title || 'unknown');
+
+      try {
+        const data = await getRecipeRatingSummary({
+          userId: userId || 'guest',
+          recipeId
+        });
+
+        setRatingSummary(data);
+        setRating(data.userRating || 0);
+      } catch {
+        setRatingSummary(null);
+      }
+    };
+
+    loadRecipeRating();
+  }, [recipe, userId]);
+
   const handleRecommend = async () => {
     if (!ingredientsText.trim() || loading) return;
 
@@ -142,7 +169,6 @@ export default function AIRecipes() {
       });
 
       setRecipe(data);
-      setRating(0);
       setRatingMessage('');
 
     } catch (error) {
@@ -182,6 +208,12 @@ export default function AIRecipes() {
         rating: value
       });
 
+      setRatingSummary(prev => prev ? {
+        ...prev,
+        userHasRated: true,
+        userRating: value
+      } : prev);
+      setRating(value);
       setRatingMessage('Valoracion enviada');
     } catch (err) {
       setRatingMessage(err.message || 'No se pudo enviar la valoracion');
@@ -323,6 +355,23 @@ export default function AIRecipes() {
           <Text className="text-indigo-400 mb-4">
             Similitud: {similarityValue != null ? `${similarityValue}%` : 'N/A'}
           </Text>
+
+          <View className="bg-zinc-800 dark:bg-zinc-200 rounded-2xl p-4 mb-4">
+            <Text className="text-white dark:text-zinc-950 font-semibold mb-1">
+              Valoraciones
+            </Text>
+            <Text className="text-zinc-300 dark:text-zinc-700 text-sm">
+              Cantidad: {ratingSummary?.ratingCount ?? 0}
+            </Text>
+            <Text className="text-zinc-300 dark:text-zinc-700 text-sm">
+              Media: {ratingSummary?.averageRating != null ? `${ratingSummary.averageRating} / 5` : 'Aún sin valoraciones'}
+            </Text>
+            <Text className="text-zinc-300 dark:text-zinc-700 text-sm mt-1">
+              {ratingSummary?.userHasRated
+                ? `Ya la valoraste con ${ratingSummary.userRating} / 5`
+                : 'Todavía no la has valorado'}
+            </Text>
+          </View>
 
           <Text className="text-white font-semibold mb-2">
             Ingredientes
