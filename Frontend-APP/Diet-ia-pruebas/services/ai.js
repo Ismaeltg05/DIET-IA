@@ -63,14 +63,21 @@ export const startBatchProcess = async () => {
 // POST /api/ai/rate-recipe
 export const rateRecipe = async ({ userId, recipeId, rating }) => {
   return request({
-    path: '/api/ai/rate-recipe',
+    path: `/api/recipes/${encodeURIComponent(recipeId)}/ratings`,
     method: 'POST',
     body: {
-      user_id: userId,
-      recipe_id: recipeId,
+      userId,
       rating
     },
     fallbackErrorMessage: 'No se pudo enviar la valoracion'
+  });
+};
+
+// GET /api/recipes/{recipe_id}/ratings
+export const getRecipeRatingSummary = async ({ userId, recipeId }) => {
+  return request({
+    path: `/api/recipes/${encodeURIComponent(recipeId)}/ratings?userId=${encodeURIComponent(userId || 'guest')}`,
+    fallbackErrorMessage: 'No se pudo consultar la valoración de la receta'
   });
 };
 
