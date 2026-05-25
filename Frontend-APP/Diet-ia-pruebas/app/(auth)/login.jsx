@@ -22,15 +22,19 @@ export default function Login() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
 
   const handleLogin = async () => {
     if (!validarEmail(email)) {
-      Alert.alert('Error', 'Por favor, introduce un email válido');
+      const msg = 'Por favor, introduce un email válido';
+      setLoginError(msg);
+      Alert.alert('Error', msg);
       return;
     }
 
     // Envia las credenciales al backend y procesa la respuesta.
     try {
+      setLoginError('');
       const data = await loginUser(email, password);
 
       console.log('Login correcto:', data);
@@ -39,7 +43,9 @@ export default function Login() {
       // Después de un inicio de sesión exitoso, redirige al inicio.
       router.push('/');
     } catch (error) {
-      Alert.alert('Error', error.message);
+      const message = (error && (error.message || String(error))) || 'Error al iniciar sesión';
+      setLoginError(message);
+      Alert.alert('Error', message);
     }
   };
 
@@ -78,6 +84,10 @@ export default function Login() {
             Entrar
           </Text>
         </Pressable>
+
+        {loginError ? (
+          <Text className="text-red-400 text-center mt-3">{loginError}</Text>
+        ) : null}
 
         <Pressable
           onPress={() => router.push('/(auth)/register')}
