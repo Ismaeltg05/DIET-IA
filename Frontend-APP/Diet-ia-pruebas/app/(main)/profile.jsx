@@ -15,7 +15,8 @@ import {
 
 import '../../global.css';
 import ThemeToggle from '../../components/ThemeToggle';
-import { getUserId } from '../../services/auth';
+import { useRouter } from 'expo-router';
+import { getUserId, logout } from '../../services/auth';
 import {
   getUserPreferences,
   saveUserPreferences
@@ -39,6 +40,7 @@ export default function Profile() {
   const [prefsMessage, setPrefsMessage] = useState('');
   const [favoriteRecipes, setFavoriteRecipes] = useState([]);
   const [ratedRecipes, setRatedRecipes] = useState([]);
+  const router = useRouter();
 
   const preferenceOptions = [
     {
@@ -66,6 +68,16 @@ export default function Profile() {
       ...prev,
       [key]: !prev[key]
     }));
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.warn('Error cerrando sesión:', err);
+    } finally {
+      router.push('/');
+    }
   };
 
   useEffect(() => {
@@ -250,6 +262,12 @@ export default function Profile() {
           />
         )}
       </View>
+      <Pressable
+        onPress={handleLogout}
+        className="bg-red-600 py-3 rounded-xl mt-4 mb-10"
+      >
+        <Text className="text-white text-center font-semibold">Cerrar sesión</Text>
+      </Pressable>
     </ScrollView>
   );
 }
