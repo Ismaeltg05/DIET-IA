@@ -5,7 +5,7 @@ Comentador: Ismael Torres González y Francisco J. Salmerón Puig
 
 import React from 'react';
 import { View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Slot } from 'expo-router';
 import Navbar from '../../components/Navbar';
 
 // Layout principal de la sección principal de la app.
@@ -14,8 +14,8 @@ import Navbar from '../../components/Navbar';
 export default function MainLayout() {
   return (
     <View className="flex-1">
-      {/* Stack de pantallas: oculta cabecera nativa para usar Navbar personalizado */}
-      <Stack screenOptions={{ headerShown: false }} style={{ flex: 1 }} />
+      {/* Slot de rutas: evita el stack nativo porque la navegación la controla Navbar */}
+      <Slot />
       <Navbar />
     </View>
   );
