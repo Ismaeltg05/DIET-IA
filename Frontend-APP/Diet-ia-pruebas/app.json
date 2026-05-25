@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "my-expo-app",
-    "slug": "my-expo-app",
+    "name": "DIET-IA",
+    "slug": "diet-ia",
     "version": "1.0.0",
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/app_logo.png"
     },
     "experiments": {
       "tsconfigPaths": true

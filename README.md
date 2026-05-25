@@ -333,18 +333,6 @@ Archivos relevantes
 - `docker-compose.yaml`, `nginx.conf` — orquestación y proxy.
 - Guías adicionales: [COPILOT.md](COPILOT.md), [Instrucciones.md](Instrucciones.md), [README_DETAILED.md](README_DETAILED.md)
 
-Licencia
---------
-
-Consulta el archivo `LICENSE` en la raíz del repositorio para los términos de uso.
-
-Contacto
--------
-
-Autores: Francisco José Salmerón Puig, Ismael Torres González
-
----
-
 Imágenes y capturas
 --------------------
 
@@ -362,3 +350,19 @@ Capturas y gráficos relevantes del proyecto (si no aparecen, comprueba que los 
 - Spark Worker Web UI: ![Spark worker](docs/images/spark_worker.png)
 - HBase Web UI: ![HBase UI](docs/images/hbase.png)
 - Backend running / health (screenshot): ![Backend running](docs/images/backend_working.png)
+- Web — Home (captura): ![Web home](docs/images/web_home.png)
+- Web — Vista receta: ![Web recipe](docs/images/web_recipe.png)
+- Web — AI (captura): ![Web AI](docs/images/web_ai.png)
+- Web — Perfil de usuario: ![Web profile](docs/images/web_profile.png)
+
+Licencia
+--------
+
+Consulta el archivo `LICENSE` en la raíz del repositorio para los términos de uso.
+
+Contacto
+-------
+
+Autores: Francisco José Salmerón Puig, Ismael Torres González
+
+---
