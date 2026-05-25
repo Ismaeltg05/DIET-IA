@@ -29,7 +29,7 @@ const Navbar = () => {
   return (
     // Barra de navegación inferior.
 // Utiliza emojis como iconos y rutas de `expo-router` para cambiar de pantalla.
-    <View className={`flex-row justify-around items-center px-2 py-2 ${isDark ? 'bg-zinc-950/95 border-t border-zinc-800 shadow-black/20' : 'bg-white/95 border-t border-zinc-200 shadow-zinc-200/70'} safe-area-inset-b`}>
+    <View className={`absolute bottom-0 left-0 right-0 z-50 flex-row justify-around items-center px-2 py-2 ${isDark ? 'bg-zinc-950/95 border-t border-zinc-800 shadow-black/20' : 'bg-white/95 border-t border-zinc-200 shadow-zinc-200/70'} safe-area-inset-b`}>
       {navItems.map((item) => (
         <TouchableOpacity
           key={item.route}
