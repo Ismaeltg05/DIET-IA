@@ -1,6 +1,9 @@
 # DIET-IA — Asistente de recetas y planificación alimentaria
 
-**Autores:** Francisco José Salmerón Puig, Ismael Torres González
+**Autores:**
+- Adrián Ruiz Sánchez
+- Francisco José Salmerón Puig
+- Ismael Torres González
 
 Última actualización: 2026-05-25
 
