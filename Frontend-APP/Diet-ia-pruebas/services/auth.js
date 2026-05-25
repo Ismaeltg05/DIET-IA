@@ -1,6 +1,8 @@
 import { buildApiUrl } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Intenta convertir la respuesta HTTP en JSON.
+// Si la respuesta no es JSON válido, devuelve un objeto vacío.
 const parseResponseJson = async (response) => {
   try {
     return await response.json();
@@ -9,6 +11,7 @@ const parseResponseJson = async (response) => {
   }
 };
 
+// Devuelve el mensaje de error más relevante disponible en la respuesta del API.
 const getApiErrorMessage = (data, fallbackMessage) => {
   return data.error || data.detail || data.message || fallbackMessage;
 };
@@ -31,7 +34,8 @@ export const loginUser = async (email, password) => {
     throw new Error(getApiErrorMessage(data, 'Error al iniciar sesión'));
   }
 
-  // Guardar ID del usuario para mantener sesión activa.
+  // Si el backend devuelve el ID de usuario, lo almacena en AsyncStorage
+  // para poder mantener la sesión iniciada entre sesiones de la app.
   if (data.userId) {
     await AsyncStorage.setItem('userId', data.userId);
   }
@@ -59,14 +63,16 @@ export const registerUser = async (name, email, password, phone) => {
     throw new Error(getApiErrorMessage(data, 'Error al registrarse'));
   }
 
+  // Devuelve los datos del usuario recién registrado para manejo posterior.
   return data;
 };
 
-// 🔹 utilidad extra (muy recomendable)
+// Utilidad para obtener el ID de usuario almacenado en AsyncStorage.
 export const getUserId = async () => {
   return await AsyncStorage.getItem('userId');
 };
 
+// Borra el identificador de usuario guardado localmente para cerrar sesión.
 export const logout = async () => {
   await AsyncStorage.removeItem('userId');
 };

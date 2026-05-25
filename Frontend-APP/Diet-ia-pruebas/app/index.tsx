@@ -14,10 +14,11 @@ export default function Home() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
 
-  // Tamaño responsive para móvil
+  // Calcula el tamaño del logo en función del ancho de la pantalla,
+  // de modo que la imagen se vea correctamente en dispositivos móviles.
   const logoSize = Dimensions.get('window').width * 0.22;
 
-  // Animaciones
+  // Valores de animación para el logo: flotación y escala inicial.
   const floatAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.85)).current;
 
@@ -34,7 +35,8 @@ export default function Home() {
 
     checkUser();
 
-    // Animación suave
+    // Inicia animaciones al cargar la pantalla: una animación de resorte
+    // para escalar el logo y un bucle de movimiento vertical para dar vida.
     Animated.parallel([
       Animated.spring(scaleAnim, {
         toValue: 1,
@@ -59,6 +61,8 @@ export default function Home() {
     ]).start();
   }, []);
 
+  // Mientras se comprueba la sesión, no renderiza la pantalla para evitar
+  // parpadeos con contenido aún no decidido.
   if (loading) return null;
 
   return (

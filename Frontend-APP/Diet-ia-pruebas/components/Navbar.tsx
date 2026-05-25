@@ -14,18 +14,21 @@ const Navbar = () => {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Elementos visibles en la barra de navegación inferior.
   const navItems = [
     { name: 'Inicio', icon: '🏠', route: '/(main)/recipes' },
     { name: 'Perfil', icon: '👤', route: '/(main)/profile' },
     { name: 'IA', icon: '🤖', route: '/(main)/ai' },
   ];
 
+  // Determina si la ruta actual corresponde al elemento activo.
   const isActive = (route: string) => {
     return pathname.startsWith(route);
   };
 
   return (
-    // Barra de navegación inferior. Usa icons emoji y rutas de `expo-router`.
+    // Barra de navegación inferior.
+// Utiliza emojis como iconos y rutas de `expo-router` para cambiar de pantalla.
     <View className={`flex-row justify-around items-center px-2 py-2 ${isDark ? 'bg-zinc-950/95 border-t border-zinc-800 shadow-black/20' : 'bg-white/95 border-t border-zinc-200 shadow-zinc-200/70'} safe-area-inset-b`}>
       {navItems.map((item) => (
         <TouchableOpacity

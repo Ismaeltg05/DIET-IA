@@ -29,20 +29,9 @@ export default function Recipes() {
           throw new Error(data.error || data.detail || 'No se pudieron cargar las recetas');
         }
 
-        // Normalizar la respuesta: algunos endpoints devuelven {recipes: [...]}
-        const normalizedRecipes = Array.isArray(data.recipes)
-          ? data.recipes
-          : Array.isArray(data)
-            ? data
-            : [];
-
-        setRecipes(normalizedRecipes);
-      } catch (error) {
-        setError(error.message || 'Error de conexión con el backend');
-      } finally {
-        setLoading(false);
-      }
-    };
+        // Normaliza la respuesta del backend para aceptar ambos formatos:
+        // - { recipes: [...] }
+        // - [ ... ]
 
     fetchRecipes();
   }, []);
@@ -90,6 +79,8 @@ export default function Recipes() {
         </Text>
       )}
 
+      {/* Lista de recetas obtenidas del backend. Usa FlatList para
+          renderizar de forma eficiente y manejar muchos elementos. */}
       <FlatList
         data={recipes}
         keyExtractor={(item, index) => item?._id || String(index)}

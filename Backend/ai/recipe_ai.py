@@ -27,6 +27,12 @@ Comentador: Ismael Torres González y Francisco J. Salmerón Puig
 
 
 def _to_list(value):
+    """Normaliza valores flexibles a listas.
+
+    - Si el dato ya es lista, lo devuelve tal cual.
+    - Si es string con formato de lista literal, intenta parsearlo.
+    - En cualquier otro string devuelve el valor envuelto en lista.
+    """
     if isinstance(value, list):
         return value
     if isinstance(value, str):
@@ -49,6 +55,11 @@ def _to_list(value):
 
 
 def _join_ingredients(value) -> str:
+    """Une ingredientes en una sola cadena limpia.
+
+    Convierte listas o strings separados por comas/pipes en un texto
+    único adecuado para generar embeddings.
+    """
     if isinstance(value, str):
         parts = [part.strip() for part in value.replace("|", ",").split(",") if part.strip()]
         return " ".join(parts)
@@ -58,6 +69,7 @@ def _join_ingredients(value) -> str:
 
 
 def _split_pipe_values(value) -> List[str]:
+    """Divide valores separados por pipe en una lista de strings."""
     if value is None:
         return []
     if isinstance(value, list):
@@ -70,6 +82,11 @@ def _split_pipe_values(value) -> List[str]:
 
 
 def _split_ingredients_text(value: str) -> List[str]:
+    """Extrae ingredientes de texto libre en una lista de elementos.
+
+    Soporta formatos con pipes, saltos de línea y cantidades expresadas en
+    medidas comunes para separar correctamente los ingredientes.
+    """
     if value is None:
         return []
     text = str(value).strip()
@@ -88,6 +105,7 @@ def _split_ingredients_text(value: str) -> List[str]:
 
 
 def _split_into_steps(text: str) -> List[str]:
+    """Divide texto de instrucciones en pasos individuales."""
     if not text:
         return []
     s = str(text).strip()
@@ -116,6 +134,11 @@ def _split_into_steps(text: str) -> List[str]:
 
 
 class RecipeSimilarityAI:
+    """Modelo de similitud de recetas basado en embeddings.
+
+    Carga el dataset de recetas, prepara los embeddings y ofrece métodos
+    para recomendar la mejor receta a partir de una lista de ingredientes.
+    """
     def __init__(
         self,
         base_dir: Optional[str] = None,
@@ -284,12 +307,12 @@ class RecipeSimilarityAI:
         if not ingredients:
             raise ValueError("At least one ingredient is required")
         
-        # Normalize input ingredients
+        # Normaliza ingredientes de entrada para evitar duplicados e inconsistencias.
         normalized = self._normalize_ingredients(ingredients)
         if not normalized:
             raise ValueError("No valid ingredients provided")
 
-        # Create embedding for the input
+        # Genera embedding de consulta a partir de los ingredientes normalizados.
         query_embedding = self.embedder.encode(
             " ".join(normalized),
             show_progress_bar=False,
@@ -297,13 +320,12 @@ class RecipeSimilarityAI:
             normalize_embeddings=True,
         )
 
-        # Calculate similarities
+        # Calcula similitud por producto punto entre consulta y recetas.
         similarities = np.dot(self.recipe_embeddings, query_embedding)
 
-        # Get top K indices
+        # Obtiene los índices de las recetas con mayor similitud.
         top_indices = np.argsort(similarities)[::-1][:max(top_k, 1)]
 
-        # Format results
         results = []
         for idx in top_indices:
             row = self.recipes.iloc[idx]
@@ -311,17 +333,17 @@ class RecipeSimilarityAI:
             payload = self._build_recipe_payload(row, score)
             results.append(payload)
 
-        # Return single result or list
+        # Devuelve un solo resultado si top_k == 1, o la lista completa.
         if top_k == 1:
             return results[0] if results else {}
         else:
             return results
 
     def explain_match(self, recipe_title: str, ingredients: List[str]) -> dict:
-        """Explain why a recipe matches given ingredients"""
+        """Explica por qué una receta coincide con los ingredientes proporcionados."""
         normalized = self._normalize_ingredients(ingredients)
         
-        # Find recipe
+        # Busca una receta cuyo título contenga el texto solicitado.
         matching = self.recipes[
             self.recipes['Title'].str.lower().str.contains(recipe_title.lower(), na=False)
         ]
@@ -333,7 +355,7 @@ class RecipeSimilarityAI:
         recipe_ingredients_str = recipe_row.get("Ingredients", "")
         recipe_ingredients = _split_ingredients_text(recipe_ingredients_str)
 
-        # Calculate overlap
+        # Calcula solapamiento entre ingredientes de consulta y de la receta.
         recipe_ing_lower = [ing.lower() for ing in recipe_ingredients]
         matching_ingredients = [ing for ing in normalized if any(ing in r_ing for r_ing in recipe_ing_lower)]
         

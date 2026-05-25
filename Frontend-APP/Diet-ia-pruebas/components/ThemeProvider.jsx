@@ -13,6 +13,7 @@ const ThemeContext = createContext({
 });
 
 export function ThemeProvider({ children }) {
+  // Inicializa el tema según la preferencia del sistema.
   const [theme, setTheme] = useState(() => {
     const systemTheme = Appearance.getColorScheme();
     return systemTheme === 'light' ? 'light' : 'dark';
@@ -21,6 +22,7 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     let isMounted = true;
 
+    // Recupera el tema guardado en AsyncStorage si existe.
     AsyncStorage.getItem('theme').then((savedTheme) => {
       if (!isMounted) return;
 
@@ -35,12 +37,15 @@ export function ThemeProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    // Guarda el tema actual en AsyncStorage para que persista entre sesiones.
     AsyncStorage.setItem('theme', theme);
 
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       const root = document.documentElement;
       const body = document.body;
 
+      // Aplica clases y estilos de tema en la versión web para mantener la
+      // consistencia con el tema usado en la app nativa.
       root.classList.toggle('dark', theme === 'dark');
       body.classList.toggle('dark', theme === 'dark');
       root.style.colorScheme = theme;

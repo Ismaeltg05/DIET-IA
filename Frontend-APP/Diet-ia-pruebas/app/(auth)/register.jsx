@@ -19,15 +19,16 @@ export default function Register() {
   const [password, setPassword] = useState('');
 
   const handleRegister = async () => {
-    // Llamada al backend para crear un nuevo usuario
+    // Llamada al backend para crear un nuevo usuario.
+    // No hay validación adicional aquí, se delega al backend.
     try {
       await registerUser(name, email, password, phone);
 
       Alert.alert('Éxito', 'Usuario creado');
 
-      // Redirigir a login para autenticar al nuevo usuario
+      // Tras el registro, redirige al formulario de inicio de sesión
+      // para que el usuario pueda acceder con sus nuevas credenciales.
       router.push('/(auth)/login');
-
     } catch (error) {
       Alert.alert('Error', error.message);
     }

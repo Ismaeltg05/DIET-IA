@@ -24,7 +24,8 @@ import {
   saveUserPreferences
 } from '../../../services/ai';
 
-// Convierte valores flexibles (string con separadores o array) en array limpio
+// Convierte valores flexibles (string con separadores o array) en array limpio.
+// Se usa en los campos de ingredientes, tags y pasos para normalizar la respuesta.
 const toArray = (value) => {
   if (Array.isArray(value)) return value;
   if (typeof value === 'string') {
@@ -38,10 +39,10 @@ const toArray = (value) => {
 
 export default function AIRecipes() {
   // --- Estado local ---
-  // `ingredientsText`: texto libre que el usuario introduce (lista separada por comas)
-  // `loading`: bandera para indicar búsqueda en curso
-  // `recipe`: objeto con la respuesta de recomendación del backend
-  // `health`: estado del servicio AI (checking/healthy/offline)
+  // `ingredientsText`: texto libre que el usuario introduce (lista separada por comas o saltos de línea).
+  // `loading`: bandera para indicar que la búsqueda de receta está en proceso.
+  // `recipe`: objeto con la receta recomendada por la IA.
+  // `health`: estado del servicio IA en el backend.
   const [ingredientsText, setIngredientsText] = useState('');
   const [loading, setLoading] = useState(false);
   const [recipe, setRecipe] = useState(null);
@@ -113,7 +114,7 @@ export default function AIRecipes() {
         setUserId('guest');
       }
 
-      // Consultar estado del microservicio AI (FastAPI)
+      // Comprueba la salud del backend IA para mostrar el estado al usuario.
       try {
         const data = await getAiHealth();
         setHealth(data.overall || 'unknown');
@@ -121,6 +122,7 @@ export default function AIRecipes() {
         setHealth('offline');
       }
 
+      // Carga preferencias del usuario desde el backend para ajustar la recomendación.
       try {
         const data = await getUserPreferences(resolvedUserId);
         const loadedPrefs = data?.preferences || {};
@@ -169,7 +171,7 @@ export default function AIRecipes() {
   }, [recipe, userId]);
 
   const handleRecommend = async () => {
-    // Evitar doble envío o búsqueda vacía
+    // Evita enviar consultas vacías y evitar múltiples envíos simultáneos.
     if (!ingredientsText.trim() || loading) return;
 
     try {
@@ -177,7 +179,7 @@ export default function AIRecipes() {
       setLoading(true);
       setRecipe(null);
 
-      // Normalizar input a array de ingredientes
+      // Convierte el texto introducido por el usuario en un array de ingredientes.
       const ingredients = ingredientsText
         .split(',')
         .map(i => i.trim())
@@ -185,7 +187,7 @@ export default function AIRecipes() {
 
       const userId = await getUserId();
 
-      // Llamada al servicio AI para obtener la mejor receta
+      // Llamada al endpoint de recomendación IA.
       const data = await recommendRecipe({
         ingredients,
         userId: userId || 'guest'
@@ -193,7 +195,6 @@ export default function AIRecipes() {
 
       setRecipe(data);
       setRatingMessage('');
-
     } catch (error) {
       setError(error.message || 'Error de conexión con el backend');
     } finally {
@@ -202,6 +203,7 @@ export default function AIRecipes() {
   };
 
   const handleSavePreferences = async () => {
+    // Envia al backend las preferencias de dieta seleccionadas.
     try {
       setPrefsLoading(true);
       setPrefsMessage('');
@@ -223,6 +225,7 @@ export default function AIRecipes() {
       return;
     }
 
+    // Identifica la receta con las posibles claves devueltas por el backend.
     const recipeId = String(recipe.recipe_id || recipe.id || recipe._id || recipe.Title || 'unknown');
 
     try {
@@ -236,6 +239,7 @@ export default function AIRecipes() {
         rating: value
       });
 
+      // Actualiza el resumen local para reflejar la valoración del usuario.
       setRatingSummary(prev => prev ? {
         ...prev,
         userHasRated: true,
@@ -256,17 +260,18 @@ export default function AIRecipes() {
 
   const similarityValue = (() => {
     if (!recipe) return null;
-    // Backend may return various keys (camelcase, PascalCase or snake_case)
+
+    // El backend puede devolver el porcentaje de similitud en distintas formas.
     const percent = recipe.SimilarityPercent ?? recipe.similarity_percent ?? recipe.similarityPercent ?? recipe.similarity_percent;
     if (percent != null) return percent;
 
     const score = recipe.SimilarityScore ?? recipe.similarity_score ?? recipe.similarity ?? recipe.Score ?? null;
     if (score == null) return null;
 
-    // If score looks like 0..1, convert to percent
+    // Si la similitud está en escala 0..1, la convierte a porcentaje.
     const num = Number(score);
     if (isNaN(num)) return null;
-    return num > 1 ? num : Math.round(num * 10000) / 100; // keep 2 decimals
+    return num > 1 ? num : Math.round(num * 10000) / 100; // conserva dos decimales
   })();
 
   return (

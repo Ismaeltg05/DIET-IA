@@ -10,7 +10,8 @@ import { useState } from 'react';
 import { loginUser } from '../../services/auth';
 import '../../global.css';
 
-// Valida formato básico de email
+// Valida formato básico de email.
+// Esta función no comprueba la existencia del dominio, solo el formato general.
 const validarEmail = (email) => {
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return regex.test(email);
@@ -27,17 +28,16 @@ export default function Login() {
       Alert.alert('Error', 'Por favor, introduce un email válido');
       return;
     }
-    // Intentar login contra el servicio remoto
+
+    // Envia las credenciales al backend y procesa la respuesta.
     try {
       const data = await loginUser(email, password);
 
       console.log('Login correcto:', data);
-
       Alert.alert('Éxito', `ID usuario: ${data.userId}`);
 
-      // Redirigir a la pantalla principal
+      // Después de un inicio de sesión exitoso, redirige al inicio.
       router.push('/');
-
     } catch (error) {
       Alert.alert('Error', error.message);
     }

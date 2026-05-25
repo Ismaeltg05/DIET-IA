@@ -3,11 +3,13 @@ import { Text, View } from 'react-native';
 interface EditScreenInfoProps {
   path: string;
 }
+
 /*
 Autor: Ismael Torres González y Francisco J. Salmerón Puig
 Comentador: Ismael Torres González y Francisco J. Salmerón Puig
 */
 
+// Componente de ejemplo que muestra información de la ruta de la pantalla.
 export const EditScreenInfo: React.FC<EditScreenInfoProps> = ({ path }) => {
   const title = 'Open up the code for this screen:';
   const description =
@@ -26,6 +28,8 @@ export const EditScreenInfo: React.FC<EditScreenInfoProps> = ({ path }) => {
   );
 };
 
+// Estilos de ejemplo para el componente. Se usan clases de Tailwind en los componentes,
+// pero este objeto mantiene estilos reutilizables simples.
 const styles = {
   codeHighlightContainer: `rounded-md px-1`,
   getStartedContainer: `items-center mx-12`,
