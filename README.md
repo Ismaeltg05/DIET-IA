@@ -173,18 +173,107 @@ python train_recommender.py
 python ner_Salmeron.py
 ```
 
-Variables de entorno y Docker
-----------------------------
+Variables de entorno y Docker (detalladas)
+----------------------------------------
 
-- `MONGO_URL` / `MONGO_URI` — cadena de conexión (ej. `mongodb://mongo:27017/dietia`).
-- `AI_MODEL_PATH` — ruta a modelos locales (opcional).
-- `OPENAI_API_KEY` — clave si usas OpenAI para adaptación de recetas.
-- `KAFKA_BOOTSTRAP_SERVERS`, `HBASE_HOST`, `SPARK_MASTER` — servicios opcionales.
+Variables principales que usa el stack (ejemplos):
 
-Recomendaciones para `docker-compose.yaml`:
+- `MONGO_URI` — Cadena de conexión a MongoDB. Ejemplo: `mongodb://mongo:27017/diet-ia`.
+- `MONGO_DB` — Nombre de la base de datos por defecto (p. ej. `diet-ia`).
+- `AI_MODEL_PATH` — Ruta local a los artefactos del modelo embedder (opcional). Si no existe, se descargará un modelo por defecto.
+- `OPENAI_API_KEY` — Clave para usar OpenAI en flujos de adaptación/LLM (opcional).
+- `KAFKA_BOOTSTRAP_SERVERS` — Dirección(es) de Kafka (ej. `kafka:9092`) para producers/consumers.
+- `HBASE_HOST`, `HBASE_PORT` — Configuración de HBase si está habilitado (opcional).
+- `SPARK_MASTER` — URL del master de Spark (ej. `spark://spark-master:7077`).
+- `NODE_ENV`, `PORT` — Variables usadas por `backend-node` (Node/Express).
+- `LOG_LEVEL` — Nivel de logging (`DEBUG`, `INFO`, `WARN`, `ERROR`).
 
-- Exponer `MONGO_URL` a `backend` y `backend-node`.
-- Para pruebas ligeras, comentar servicios opcionales.
+Consejos de uso con `docker-compose`:
+
+- Para levantar todo el stack en segundo plano:
+
+```powershell
+docker compose up --build -d
+```
+
+- Ver logs de un servicio (ejemplo `backend`):
+
+```powershell
+docker compose logs -f backend
+```
+
+- Parar y eliminar contenedores y volúmenes definidos:
+
+```powershell
+docker compose down --volumes --remove-orphans
+```
+
+- Si quieres una ejecución ligera para desarrollo, puedes comentar en `docker-compose.yaml` los servicios `hbase`, `kafka` y `spark-*` y levantar solo `mongo backend backend-node nginx`.
+
+Ejecutar en local (sin Docker)
+-----------------------------
+
+Backend AI (FastAPI):
+
+```powershell
+cd Backend/ai
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Backend Node (API pública):
+
+```powershell
+cd Backend
+npm install
+npm start
+```
+
+Endpoints rápidos y ejemplos
+---------------------------
+
+AI (FastAPI) — base: `http://localhost:8000/api/ai` (o proxied vía Nginx `/api/ai`):
+
+- `POST /api/ai/recommend` — Recomendaciones. Ejemplo:
+
+```bash
+curl -X POST http://localhost/api/ai/recommend \
+  -H "Content-Type: application/json" \
+  -d '{"ingredients":["tomate","ajo"],"top_k":5}'
+```
+
+- `GET /api/ai/health` — Healthcheck: devuelve `{ "status": "ok" }`.
+
+Node backend (Express) — base: `http://localhost:3000` (o proxied vía `/`):
+
+- `GET /api/recipes` — Listado de recetas (paginado).
+- `POST /auth/register`, `POST /auth/login` — Auth.
+
+Comandos útiles de mantenimiento
+-------------------------------
+
+- Reconstruir imágenes después de cambios en `Backend`:
+
+```powershell
+docker compose build backend backend-node
+docker compose up -d
+```
+
+- Ejecutar tests unitarios Python (Backend/ai):
+
+```powershell
+cd Backend/ai
+pytest -q
+```
+
+Notas sobre persistencia
+------------------------
+
+Los volúmenes declarados en `docker-compose.yaml` (`mongo_data`, `kafka_data`) persisten datos entre reinicios. Para borrar datos de desarrollo, ejecutar `docker compose down --volumes`.
+
+Si necesitas que documente variables de entorno específicas por servicio (por ejemplo `backend` vs `backend-node`) o añada ejemplos de `.env` y plantillas de `docker-compose.override.yml`, dímelo y los añado.
 
 Desarrollo local — orden sugerido de arranque
 -------------------------------------------
