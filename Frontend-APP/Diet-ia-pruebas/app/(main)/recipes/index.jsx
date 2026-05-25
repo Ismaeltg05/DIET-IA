@@ -32,6 +32,20 @@ export default function Recipes() {
         // Normaliza la respuesta del backend para aceptar ambos formatos:
         // - { recipes: [...] }
         // - [ ... ]
+        const normalizedRecipes = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.recipes)
+            ? data.recipes
+            : [];
+
+        setRecipes(normalizedRecipes);
+      } catch (fetchError) {
+        setError(fetchError instanceof Error ? fetchError.message : 'No se pudieron cargar las recetas');
+        setRecipes([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
     fetchRecipes();
   }, []);

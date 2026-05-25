@@ -25,7 +25,8 @@ const ensureAbsoluteUrl = (value) => {
 	if (!value) return null;
 	const trimmed = value.trim();
 	if (!trimmed) return null;
-	// Asegura que la URL tenga protocolo para poder parsearla correctamente.	const withProtocol = /^https?:\/\//i.test(trimmed)
+	// Asegura que la URL tenga protocolo para poder parsearla correctamente.
+	const withProtocol = /^https?:\/\//i.test(trimmed)
 		? trimmed
 		: `http://${trimmed.replace(/^\/+/, '')}`;
 
