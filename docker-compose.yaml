@@ -139,7 +139,7 @@ services:
     networks:
       - diet-ia
 
-  # --- BACKEND API ---
+  # --- BACKEND API --- (IA)
   backend:
     build:
       context: ./Backend

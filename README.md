@@ -1,149 +1,247 @@
-**IES Zaidín Vergeles — Proyecto de IA - BD**
+# DIET-IA — Asistente de recetas y planificación alimentaria
 
-**Autores:**
-- Francisco José Salmerón Puig
-- Ismael Torres González
+**Autores:** Francisco José Salmerón Puig, Ismael Torres González
+
+Última actualización: 2026-05-25
+
+Resumen
+-------
+DIET-IA es un proyecto desarrollado por el IES Zaidín Vergeles que provee un asistente para recomendar y adaptar recetas usando técnicas de IA (embeddings semánticos, NER y LLMs) y herramientas de Big Data. Permite buscar recetas por ingredientes, aplicar filtros por alergias/dietas y ajustar recetas a objetivos nutricionales.
+
+Tabla de contenidos
+-------------------
+
+- Visión general
+- Quickstart (Docker / Local)
+- Arquitectura y diagrama
+- Servicios y endpoints (API)
+- Datos y modelos
+- Entrenamiento e indexado
+- Variables de entorno y Docker
+- Desarrollo local y orden de arranque
+- Esquema de la base de datos (MongoDB)
+- Testing y CI
+- Seguridad y buenas prácticas
+- Troubleshooting
+- Contribuir
+- Licencia y contacto
+
+Visión general
+--------------
+DIET-IA combina:
+
+- Un motor de similitud semántica de recetas (`Backend/ai/recipe_ai.py`) basado en `sentence-transformers`.
+- Un backend AI (FastAPI) que expone `/api/ai/*` y realiza indexado, búsqueda y enriquecimiento de recetas (`Backend/ai/main.py`).
+- Un backend Node/Express para autenticación y gestión de recetas (`Backend/src`).
+- Una app Expo/React Native que consume las APIs (`Frontend-APP/Diet-ia-pruebas`).
+
+Quickstart — Docker (recomendado)
+--------------------------------
+
+Requisitos previos: Docker Desktop (Windows), Docker Compose v2.
+
+Levantar el stack completo:
+
+```powershell
+docker compose up --build -d
+docker compose logs backend --tail 200
+```
+
+Comprobar healthcheck (vía proxy):
+
+```bash
+curl http://localhost/api/ai/health
+```
+
+Quickstart — ejecutar IA local sin Docker
+----------------------------------------
+
+```powershell
+cd Backend/ai
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Frontend (Expo)
+---------------
+
+```bash
+cd Frontend-APP/Diet-ia-pruebas
+npm install
+npx expo start
+```
+
+Arquitectura y diagrama
+-----------------------
+
+Componentes principales:
+
+- `Backend/ai` — FastAPI: recomendaciones, indexado, healthcheck.
+- `Backend/src` — Node/Express: auth, recetas, proxy a AI.
+- `Frontend-APP/Diet-ia-pruebas` — Expo app.
+- `models/` y `datasets/` — artefactos y datos.
+- Servicios opcionales: `Kafka`, `HBase`, `Spark`.
+
+```mermaid
+flowchart LR
+  A[Frontend (Expo)] -->|HTTP| B[Backend Node (Express)]
+  B -->|API| C[Backend IA (FastAPI)]
+  C --> D[Embeddings / Models]
+  B --> E[MongoDB]
+  C --> F[Kafka (opcional)]
+  F --> G[Consumer / Analytics]
+```
+
+Servicios y endpoints (API)
+--------------------------
+
+AI (FastAPI) — base URL: `http://<host>:8000/api/ai` (en Docker via Nginx: `/api/ai`)
+
+1) `POST /api/ai/recommend`
+- Descripción: devuelve recetas relevantes para una lista de ingredientes y filtros.
+- Request JSON ejemplo:
+
+```json
+{
+  "ingredients": ["tomate", "ajo", "aceite de oliva"],
+  "user_id": "guest",
+  "filters": {"exclude_allergens": ["lactosa"], "diet": "vegetarian", "max_calories": 600},
+  "top_k": 5
+}
+```
+
+- Response JSON (fragmento):
+
+```json
+{
+  "results": [ { "recipe_id": "12345", "title": "Ensalada...", "SimilarityScore": 0.87 } ]
+}
+```
+
+2) `GET /api/ai/health` — Healthcheck: `{ "status": "ok" }`.
+
+Node backend (Express) — base URL: `http://<host>:3000` (en Docker proxy via `/`)
+
+- `GET /api/recipes` — listado paginado (`?page=&limit=&tag=&diet=`).
+- `POST /auth/register`, `POST /auth/login` — autenticación.
+- Nota: `Backend/src/routes/ai.js` contiene un puente (proxy) que puede reenviar a `http://localhost:8000/recommend` — mantener sincronizado con el prefijo FastAPI.
+
+Datos y modelos
+---------------
+
+- Datasets: `Backend/datasets/RAW_recipes.csv`, `train.json`, `val.json`, `test.json`.
+- Artefactos del embedder: `models/embedder/` (tokenizers, safetensors). Si faltan, se usa `sentence-transformers/all-MiniLM-L6-v2` por defecto.
+- Modelos NER: `models/ner/`.
+
+Entrenamiento e indexado
+------------------------
+
+Flujo recomendado:
+
+1. Preprocesado y normalización (`python/generatetraindata.py`).
+2. Entrenamiento NER (`python/ner_Salmeron.py`).
+3. Entrenamiento/ajuste del recomendador (`python/train_recommender.py`).
+4. Generar embeddings con `sentence-transformers` y guardar en `models/embedder/`.
+5. Indexado: almacenar embeddings en la colección `recipes` o en una vector DB (Faiss/Milvus) para producción.
+
+Comandos de ejemplo:
+
+```powershell
+cd python
+python generatetraindata.py
+python train_recommender.py
+python ner_Salmeron.py
+```
+
+Variables de entorno y Docker
+----------------------------
+
+- `MONGO_URL` / `MONGO_URI` — cadena de conexión (ej. `mongodb://mongo:27017/dietia`).
+- `AI_MODEL_PATH` — ruta a modelos locales (opcional).
+- `OPENAI_API_KEY` — clave si usas OpenAI para adaptación de recetas.
+- `KAFKA_BOOTSTRAP_SERVERS`, `HBASE_HOST`, `SPARK_MASTER` — servicios opcionales.
+
+Recomendaciones para `docker-compose.yaml`:
+
+- Exponer `MONGO_URL` a `backend` y `backend-node`.
+- Para pruebas ligeras, comentar servicios opcionales.
+
+Desarrollo local — orden sugerido de arranque
+-------------------------------------------
+
+1. `mongo`
+2. `kafka`, `hbase`, `spark` (si son necesarios)
+3. `backend` (FastAPI)
+4. `backend-node` (Node/Express)
+5. `frontend` (Expo)
+
+Esquema de la base de datos (MongoDB)
+------------------------------------
+
+- `recipes`:
+  - `_id`, `title`, `ingredients` (array), `steps`, `tags`, `nutrition` (object), `embeddings` (vector opcional), `source`.
+- `users`:
+  - `_id`, `email`, `password_hash`, `preferences` (diet, allergens), `history`.
+- `ratings`:
+  - `user_id`, `recipe_id`, `rating`, `notes`, `timestamp`.
+
+Testing y CI
+------------
+
+- Tests unitarios Python: `pytest` (ejecutar en `Backend/ai`).
+- Tests de integración: levantar servicios mínimos en CI (`mongo`, `backend`) y ejecutar peticiones a endpoints.
+- Sugerencia: plantilla GitHub Actions que haga `docker compose up -d mongo backend` y ejecute `pytest`.
+
+Buenas prácticas y seguridad
+---------------------------
+
+- No subir claves ni modelos pesados al repositorio (usar `.gitignore` y un storage/registry para artefactos).
+- Guardar secretos en variables de entorno o secret managers.
+- En producción, habilitar TLS y restringir el acceso a servicios internos.
+
+Troubleshooting (FAQ)
+---------------------
+
+- 502 desde Nginx: comprobar que `backend` (FastAPI) está escuchando en el puerto 8000.
+- Proxy Node→AI desincronizado: revisar `Backend/src/routes/ai.js` y `Backend/ai/main.py` para asegurar prefijos y rutas.
+- AI no carga modelos: comprobar `models/embedder/` y la variable `AI_MODEL_PATH`.
+
+Contribuir
+----------
+
+1. Crea una rama `feature/` o `fix/`.
+2. Añade tests para cambios funcionales.
+3. Ejecuta linters y `pytest` antes de abrir PR.
+
+Archivos relevantes
+------------------
+
+- `Backend/ai/main.py` — FastAPI entrypoint.
+- `Backend/ai/recipe_ai.py` — motor de similitud.
+- `Backend/src/server.js` — Node server.
+- `Backend/src/routes/ai.js` — proxy Node → AI.
+- `Frontend-APP/Diet-ia-pruebas/services/api.js` — construcción de `API_URL`.
+- `docker-compose.yaml`, `nginx.conf` — orquestación y proxy.
+- Guías adicionales: [COPILOT.md](COPILOT.md), [Instrucciones.md](Instrucciones.md), [README_DETAILED.md](README_DETAILED.md)
+
+Licencia
+--------
+
+Consulta el archivo `LICENSE` en la raíz del repositorio para los términos de uso.
+
+Contacto
+-------
+
+Autores: Francisco José Salmerón Puig, Ismael Torres González
 
 ---
 
-## Índice
+Esta versión unificada del `README.md` consolida toda la información técnica y operativa del proyecto. Si quieres, puedo:
 
-- [Definición del problema y objetivos](#definición-del-problema-y-objetivos)
-  - [Objetivos principales](#objetivos-principales)
-- [Estado del arte y alcance](#estado-del-arte-y-alcance)
-- [Planificación del desarrollo](#planificación-del-desarrollo)
-- [Herramientas y tecnologías](#herramientas-y-tecnologías)
-  - [Inteligencia Artificial y Aprendizaje Automático (IA/ML)](#inteligencia-artificial-y-aprendizaje-automático-iaml)
-  - [Big Data y gestión de datos](#big-data-y-gestión-de-datos)
-  - [Backend y API](#backend-y-api)
-  - [Frontend](#frontend)
-  - [Visualización de datos](#visualización-de-datos)
-  - [Otras herramientas](#otras-herramientas)
-- [Fuentes de datos previstas](#fuentes-de-datos-previstas)
-  - [Recetas y nutrición](#recetas-y-nutrición)
-  - [Ingredientes y alergias](#ingredientes-y-alergias)
-  - [Datos de usuarios](#datos-de-usuarios)
-  - [Procesamiento inicial de los datos](#procesamiento-inicial-de-los-datos)
+- Generar una versión pública abreviada (`README_ES.md`) para subir al repositorio raíz.
+- Añadir una plantilla de GitHub Actions para CI/Tests.
+- Crear scripts de ejemplo para indexado e integración.
 
----
-
-## Definición del problema y objetivos
-
-En la actualidad, muchas personas experimentan serias dificultades a la hora de planificar sus comidas diarias de forma adecuada. Estas dificultades aumentan cuando deben tenerse en cuenta factores como alergias e intolerancias alimentarias (por ejemplo, al gluten o a la lactosa), preferencias personales o éticas (como dietas veganas, vegetarianas o la necesidad de comidas rápidas) y objetivos de salud específicos, tales como la pérdida de peso o el control de la ingesta calórica. Como consecuencia, estas personas suelen sentirse frustradas, terminan recurriendo a opciones poco saludables o abandonan sus dietas, lo que da lugar a hábitos alimenticios poco sostenibles a largo plazo.
-
-El problema principal radica en la ausencia de herramientas accesibles, intuitivas y personalizadas que integren de manera eficaz la recomendación inteligente de comidas con información nutricional precisa y fiable. Muchas soluciones actuales son demasiado genéricas, no contemplan múltiples restricciones simultáneamente o requieren un esfuerzo excesivo por parte del usuario para introducir y analizar los datos. Por ello, se hace necesario desarrollar una herramienta que facilite la planificación alimentaria diaria, adaptándose a las necesidades individuales y promoviendo hábitos saludables, equilibrados y sostenibles. 
-
-El objetivo de este proyecto es diseñar una solución que permita a los usuarios planificar sus comidas de forma personalizada, teniendo en cuenta sus restricciones alimentarias, preferencias y metas nutricionales, proporcionando recomendaciones prácticas y basadas en datos nutricionales precisos, con el fin de mejorar su calidad de vida y favorecer una alimentación más consciente y saludable. 
-
----
-
-## Objetivos principales
-
-- Desarrollar un asistente basado en modelos de lenguaje de gran tamaño (LLM) que permita la generación, adaptación y recomendación de recetas personalizadas a través de una interfaz conversacional. Este asistente deberá ser capaz de excluir automáticamente alérgenos específicos, respetar preferencias alimentarias y ajustar los valores nutricionales, como macronutrientes y calorías, en función de los objetivos individuales de cada usuario. 
-
-- Diseñar un sistema capaz de almacenar, gestionar y procesar grandes volúmenes de datos relacionados con recetas, ingredientes y valores nutricionales. Este sistema deberá permitir un filtrado eficiente y escalable, garantizando tiempos de respuesta adecuados incluso ante un alto número de consultas y combinaciones de restricciones alimentarias.
-
-- Desplegar una API funcional, segura y escalable que exponga los servicios de recomendación y personalización de recetas. Dicha API deberá integrarse con un dashboard de análisis que permita visualizar métricas de uso, rendimiento del sistema y patrones de consumo, facilitando tanto la monitorización del servicio como la toma de decisiones basadas en datos para futuras mejoras del asistente.
-
----
-
-## Estado del arte y alcance
-
-En los últimos años han surgido diversas aplicaciones y plataformas comerciales orientadas a la generación y recomendación de recetas mediante inteligencia artificial. Herramientas como ChefGPT, DishGen o SuperCook emplean modelos avanzados para sugerir recetas en función de los ingredientes disponibles, el tipo de dieta (como keto, vegana o vegetariana) o restricciones específicas del usuario. Estas soluciones suelen incorporar funcionalidades adicionales como el seguimiento calórico, la planificación semanal de comidas y, en algunos casos, la estimación de macronutrientes, lo que facilita la adopción de hábitos alimentarios más estructurados. 
-
-Desde el ámbito académico, se han desarrollado sistemas más orientados a la personalización y la explicabilidad de las recomendaciones. Muchos de estos enfoques combinan modelos de lenguaje de gran tamaño (LLM) con sistemas basados en reglas expertas (Rule-Based Reasoning, RBR), permitiendo justificar las recomendaciones ofrecidas al usuario. Dichos sistemas suelen tener en cuenta variables como el metabolismo basal (BMR), el nivel de actividad física, objetivos de salud y la presencia de alergias o intolerancias alimentarias. A nivel tecnológico, es habitual el uso de bases de datos NoSQL como MongoDB para el almacenamiento de recetas e ingredientes, junto con APIs REST para la comunicación entre los distintos componentes del sistema.
-
-En cuanto al alcance del proyecto, este se centra en el desarrollo de un producto mínimo viable (MVP) que ofrezca una experiencia conversacional mediante chat, combinada con un perfil de usuario básico para almacenar preferencias, restricciones y objetivos nutricionales. El sistema procesará un conjunto inicial de más de 1.000 recetas, permitiendo aplicar filtros estrictos por alergias, dietas y preferencias alimentarias, así como mostrar métricas nutricionales relevantes (calorías y macronutrientes).
-
-Quedan fuera del alcance del proyecto el entrenamiento de modelos LLM desde cero, optándose por el uso de APIs de modelos preentrenados, cuya elección será debidamente justificada. Asimismo, no se abordará el escalado industrial del sistema ni su despliegue en entornos de producción de alta demanda, centrándose el trabajo en la validación funcional y técnica del enfoque propuesto. 
----
-
-## Planificación del desarrollo
-
-| Fase | Tareas principales | Duración | Fecha estimada |
-|------|--------------------|----------|----------------|
-| 1. Investigación y datos | Recopilar datasets, diseñar esquema BD, prototipo prompts LLM. | 2 semanas | 22 ene - 5 feb |
-| 2. Desarrollo core | Implementar recomendador (filtros, RAG), API backend, modelo ML básico. | 4 semanas | 6 feb - 5 mar |
-| 3. Integración Big Data | Procesar datasets con Spark/MongoDB, dashboard Power BI. | 2 semanas | 6 - 20 mar |
-| 4. Frontend y pruebas | Chat UI, tests usuarios (10 perfiles simulados), refinamiento. | 3 semanas | 21 mar - 11 abr |
-| 5. Documentación y defensa | GitHub repo, video demo (20 min), informe técnico. | 1 semana | 12 - 22 abr |
-
----
-
-## Herramientas y tecnologías
-
-### Inteligencia Artificial y Aprendizaje Automático (IA/ML)
-
-El desarrollo del sistema de recomendación se realizará principalmente en Python, utilizando librerías ampliamente adoptadas en el ámbito del análisis de datos y el aprendizaje automático. Pandas se empleará para la manipulación y limpieza de datos nutricionales y de recetas, mientras que scikit-learn permitirá implementar un recomendador *content-based*, basado en la similitud entre ingredientes, perfiles nutricionales y preferencias del usuario.
-
-Para la generación y adaptación de recetas en lenguaje natural, se integrarán APIs de modelos LLM preentrenados, como OpenAI o Groq, cuya elección se justifica por su eficiencia, calidad de resultados y reducción de costes computacionales frente al entrenamiento de modelos propios. 
-
----
-
-### Big Data y gestión de datos
-
-La persistencia de la información se realizará mediante MongoDB, una base de datos NoSQL adecuada para almacenar perfiles de usuario, recetas y estructuras de datos semiestructuradas de forma flexible. 
-
-Para el procesamiento de grandes volúmenes de datos se utilizará Apache Spark, permitiendo el tratamiento eficiente de datasets extensos de ingredientes y valores nutricionales. De forma opcional, se contempla el uso de HDFS (Hadoop Distributed File System) para el almacenamiento distribuido en caso de trabajar con volúmenes de datos significativamente grandes.
----
-
-### Backend y API
-
-El backend del sistema se desarrollará utilizando FastAPI o Flask, exponiendo una API REST que gestione las peticiones del frontend, la lógica de recomendación y la comunicación con los servicios de IA. 
-
-Para facilitar el despliegue, la portabilidad y la reproducibilidad del entorno, se empleará Docker, encapsulando la aplicación y sus dependencias en contenedores.
-
----
-
-### Frontend
-
-La interfaz de usuario se implementará mediante React Native con Tailwind CSS, permitiendo el desarrollo rápido de una aplicación móvil multiplataforma (iOS/Android/web) que incluye un chat conversacional con el asistente y un panel de control (dashboard) para la visualización de recomendaciones y métricas básicas del usuario.
-
----
-
-### Visualización de datos
-
-Para la generación de informes y la visualización de información nutricional se utilizarán herramientas como Matplotlib para gráficos integrados en la aplicación, así como Power BI para la elaboración de dashboards más avanzados orientados al análisis y la presentación de resultados.
-
----
-
-### Otras herramientas
-
-El control de versiones y la gestión del código se realizarán a través de GitHub, manteniendo un repositorio público del proyecto.
-
-Además, se empleará n8n como herramienta de automatización para los procesos ETL (extracción, transformación y carga de datos), facilitando la actualización y mantenimiento de los datasets utilizados por el sistema.
-
----
-
-## Fuentes de datos previstas
-
-### Recetas y nutrición
-
-Para la obtención de información nutricional fiable se utilizará la Base Española de Datos de Composición de Alimentos (BEDCA), que incluye información detallada de más de 800 alimentos, como valores calóricos y macronutrientes. Esta fuente resulta especialmente relevante por su carácter oficial y su adecuación al contexto alimentario español.
-
-Adicionalmente, se integrará la API de Edamam, que proporciona acceso a más de 200.000 recetas etiquetadas con información sobre ingredientes, alérgenos, tipos de dieta y valores nutricionales, lo que permitirá enriquecer el sistema de recomendación y ampliar la diversidad de recetas disponibles.
-
----
-
-### Ingredientes y alergias
-
-Para complementar la información sobre ingredientes y restricciones alimentarias, se emplearán bases de datos internacionales como INFOODS, promovida por la FAO, que ofrece datos estandarizados sobre composición de alimentos a nivel global. 
-
-Asimismo, se recurrirá a datasets disponibles en Kaggle, como conjuntos de datos del tipo **“Recipe Ingredients”**, útiles para el etiquetado de ingredientes, la detección de alérgenos y la categorización de recetas según distintos criterios dietéticos.
-
----
-
-### Datos de usuarios
-
-Dado que el proyecto se limita a un entorno de prueba, los datos de usuario se basarán en perfiles simulados, generando más de 100 perfiles sintéticos que incluyan alergias, preferencias alimentarias y objetivos nutricionales. 
-
-Estos perfiles permitirán validar el funcionamiento del sistema de recomendación y servirán como base para la recogida de feedback histórico, utilizado posteriormente para la mejora del modelo de recomendación mediante técnicas de aprendizaje automático.
-
----
-
-### Procesamiento inicial de los datos
-
-Los datos se obtendrán inicialmente en formatos CSV y JSON, siendo procesados mediante Apache Spark para llevar a cabo tareas de limpieza, normalización y agregación.
-
-Una vez procesados, los datos se cargarán en MongoDB, facilitando un acceso eficiente y flexible a la información durante la ejecución del sistema y el desarrollo de las funcionalidades del asistente conversacional.
-
+Indica cuál de estas tareas deseas que haga a continuación.
