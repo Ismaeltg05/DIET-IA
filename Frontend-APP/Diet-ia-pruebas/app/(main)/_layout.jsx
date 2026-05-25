@@ -8,7 +8,9 @@ import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import Navbar from '../../components/Navbar';
 
-// Layout principal que envuelve las pantallas dentro del stack de navegación
+// Layout principal de la sección principal de la app.
+// Este componente coloca el Stack de `expo-router` debajo de una barra
+// de navegación inferior personalizada para que la navegación sea consistente.
 export default function MainLayout() {
   return (
     <View className="flex-1">

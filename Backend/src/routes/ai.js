@@ -7,9 +7,10 @@ const express = require('express');
 const router = express.Router();
 
 /**
- * Proxy simple hacia el microservicio AI (FastAPI) que corre en el puerto 8000.
- * Recibe un body con la petición de recomendación y la reenvía al servicio AI.
- * Esto desacopla el frontend/backend Node de detalles de implementación AI.
+ * Proxy de IA para el microservicio FastAPI que corre en el puerto 8000.
+ * - Permite al backend Node delegar la lógica de recomendación a la plataforma AI.
+ * - Reenvía la carga útil original tal cual al servicio AI.
+ * - Mantiene la API de Node independiente de los detalles de implementación de AI.
  */
 router.post('/recommend', async (req, res) => {
   try {

@@ -27,7 +27,7 @@ const toBool = (value) => {
 };
 
 export default function Profile() {
-  // Estado del perfil: id, nombre, preferencias y listas del usuario
+  // Estado del perfil: ID, nombre, preferencias y listas relacionadas.
   const [userId, setUserId] = useState('guest');
   const [userName, setUserName] = useState('Usuario');
   const [preferences, setPreferences] = useState({
@@ -76,13 +76,15 @@ export default function Profile() {
         const storedUserId = await getUserId();
         resolvedUserId = storedUserId || 'guest';
         setUserId(resolvedUserId);
-        // TODO: Traer el nombre del usuario desde el backend
+
+        // Actualmente solo se utiliza el ID como nombre de usuario.
+        // En una versión futura, se debe solicitar el nombre real al backend.
         setUserName(resolvedUserId);
       } catch {
         setUserId('guest');
       }
 
-      // Intentar recuperar preferencias del backend; si falla, usar valores por defecto
+      // Carga las preferencias dietéticas guardadas del usuario.
       try {
         const data = await getUserPreferences(resolvedUserId);
         const loadedPrefs = data?.preferences || {};
@@ -105,6 +107,7 @@ export default function Profile() {
   }, []);
 
   const handleSavePreferences = async () => {
+    // Envía las preferencias actuales al backend para persistirlas.
     try {
       setPrefsLoading(true);
       setPrefsMessage('');

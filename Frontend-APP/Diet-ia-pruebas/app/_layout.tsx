@@ -10,8 +10,10 @@ import { ThemeProvider } from '../components/ThemeProvider';
 // @ts-ignore
 import '../global.css';
 
-// Layout raíz de la aplicación. Envuelve las pantallas con el proveedor de tema
-// y SafeArea para respetar zonas seguras en dispositivos móviles.
+// Layout raíz de la aplicación.
+// - ThemeProvider: controla el tema oscuro/claro y aplica clases globales.
+// - SafeAreaProvider: asegura que el contenido no se superponga con la barra
+//   de estado ni con los bordes seguros de dispositivos modernos.
 export default function RootLayout() {
   return (
     <ThemeProvider>

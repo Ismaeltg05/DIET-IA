@@ -11,7 +11,12 @@ const {
 	saveRecipeRating
 } = require("../controllers/recipeController");
 
-// Rutas relacionadas con recetas y valoraciones
+/**
+ * Rutas de recetas y valoraciones.
+ * - GET /api/recipes: obtiene todas las recetas disponibles.
+ * - GET /api/recipes/:recipeId/ratings: obtiene estadísticas de rating para una receta.
+ * - POST /api/recipes/:recipeId/ratings: guarda o actualiza la valoración de un usuario.
+ */
 router.get("/", getAllRecipes);
 router.get("/:recipeId/ratings", getRecipeRatings);
 router.post("/:recipeId/ratings", saveRecipeRating);

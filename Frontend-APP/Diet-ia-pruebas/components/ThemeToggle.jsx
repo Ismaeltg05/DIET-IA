@@ -6,6 +6,7 @@ Comentador: Ismael Torres González y Francisco J. Salmerón Puig
 import { Text, Pressable } from 'react-native';
 import { useTheme } from './ThemeProvider';
 
+// Componente simple para alternar entre el modo oscuro y claro.
 export default function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';

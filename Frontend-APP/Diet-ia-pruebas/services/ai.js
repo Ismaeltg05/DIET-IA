@@ -17,6 +17,11 @@ const getApiErrorMessage = (data, fallbackMessage) => {
   return data.error || data.detail || data.message || fallbackMessage;
 };
 
+// Función genérica de petición al backend.
+// - path: ruta relativa del endpoint.
+// - method: método HTTP (GET, POST, etc.).
+// - body: payload JSON opcional.
+// - fallbackErrorMessage: mensaje por defecto si la API no proporciona uno.
 const request = async ({ path, method = 'GET', body, fallbackErrorMessage }) => {
   const response = await fetch(buildApiUrl(path), {
     method,
@@ -32,10 +37,12 @@ const request = async ({ path, method = 'GET', body, fallbackErrorMessage }) => 
     throw new Error(getApiErrorMessage(data, fallbackErrorMessage));
   }
 
+  // Retorna la respuesta JSON del endpoint cuando el estado HTTP es OK.
   return data;
 };
 
 // GET /
+// Comprueba que el backend principal está disponible.
 export const getApiRootStatus = async () => {
   return request({
     path: '/',
@@ -44,6 +51,7 @@ export const getApiRootStatus = async () => {
 };
 
 // POST /api/ai/recommend
+// Solicita al backend de IA una recomendación de receta basada en ingredientes.
 export const recommendRecipe = async ({ ingredients, userId = 'guest' }) => {
   return request({
     path: '/api/ai/recommend',
@@ -57,6 +65,7 @@ export const recommendRecipe = async ({ ingredients, userId = 'guest' }) => {
 };
 
 // POST /api/ai/batch-process
+// Inicia un procesamiento batch del servicio IA si está disponible.
 export const startBatchProcess = async () => {
   return request({
     path: '/api/ai/batch-process',
@@ -66,6 +75,7 @@ export const startBatchProcess = async () => {
 };
 
 // POST /api/ai/rate-recipe
+// Envía una valoración de receta asociada a un usuario.
 export const rateRecipe = async ({ userId, recipeId, rating }) => {
   return request({
     path: `/api/recipes/${encodeURIComponent(recipeId)}/ratings`,
@@ -79,6 +89,7 @@ export const rateRecipe = async ({ userId, recipeId, rating }) => {
 };
 
 // GET /api/recipes/{recipe_id}/ratings
+// Recupera el resumen de valoraciones para una receta específica.
 export const getRecipeRatingSummary = async ({ userId, recipeId }) => {
   return request({
     path: `/api/recipes/${encodeURIComponent(recipeId)}/ratings?userId=${encodeURIComponent(userId || 'guest')}`,
@@ -87,6 +98,7 @@ export const getRecipeRatingSummary = async ({ userId, recipeId }) => {
 };
 
 // GET /api/ai/user-preferences/{user_id}
+// Obtiene las preferencias dietéticas guardadas del usuario.
 export const getUserPreferences = async (userId) => {
   return request({
     path: `/api/ai/user-preferences/${encodeURIComponent(userId)}`,
@@ -95,6 +107,7 @@ export const getUserPreferences = async (userId) => {
 };
 
 // POST /api/ai/user-preferences/{user_id}
+// Guarda las preferencias dietéticas del usuario en el backend.
 export const saveUserPreferences = async (userId, preferences) => {
   return request({
     path: `/api/ai/user-preferences/${encodeURIComponent(userId)}`,
@@ -107,6 +120,7 @@ export const saveUserPreferences = async (userId, preferences) => {
 };
 
 // GET /api/ai/ingredients-stats
+// Solicita estadísticas de ingredientes a la IA.
 export const getIngredientsStats = async () => {
   return request({
     path: '/api/ai/ingredients-stats',
@@ -115,6 +129,7 @@ export const getIngredientsStats = async () => {
 };
 
 // GET /api/ai/health
+// Comprueba el estado del servicio de IA.
 export const getAiHealth = async () => {
   return request({
     path: '/api/ai/health',

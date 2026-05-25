@@ -17,20 +17,25 @@ const aiRoutes = require('./routes/ai');
  */
 const app = express();
 
-// Conectar a la base de datos (MongoDB)
+// Conectar a la base de datos MongoDB utilizando variables de entorno.
 connectDB();
 
-// Middleware para parsear JSON en las peticiones entrantes
+// Middleware que permite recibir JSON en el body de las peticiones.
 app.use(express.json());
 
 const recipeRoutes = require("./routes/recipes");
 
 // Rutas principales del servicio
-app.use("/api/recipes", recipeRoutes); // CRUD y ratings sobre recetas
-app.use('/auth', authRoutes); // Registro / Login
-app.use('/api/ai', aiRoutes); // Proxy a microservicio AI (FastAPI)
+// - /api/recipes: operaciones sobre recetas y valoraciones.
+// - /auth: registro e inicio de sesión.
+// - /api/ai: proxy hacia el servicio AI de recomendación.
+app.use("/api/recipes", recipeRoutes);
+app.use('/auth', authRoutes);
+app.use('/api/ai', aiRoutes);
 
-// Ruta raíz simple para comprobación rápida
+// Ruta raíz simple para comprobación rápida del servicio.
+// Esta ruta permite comprobar que el servidor está en línea
+// sin necesidad de autenticación o servicios externos.
 app.get('/', (req, res) => {
   res.json({ mensaje: 'API funcionando' });
 });

@@ -134,14 +134,16 @@ def wait_for_kafka(bootstrap_servers, max_retries=10, retry_delay=2):
     logger.error("✗ Kafka failed to initialize after max retries")
     return False
 
-producer = None
+producer = None  # Kafka producer inicializado en el evento de arranque del servicio.
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize Kafka producer on startup and start AI background init."""
+    """Inicializa dependencias críticas cuando se inicia la aplicación."""
     global producer
-    
-    # Wait for Kafka to be ready
+
+    # 1. Verificamos que Kafka esté accesible antes de crear el productor.
+    #    Si no lo está, el servicio sigue en marcha pero la ruta de ratings
+    #    devolverá error 503 hasta que Kafka vuelva a estar disponible.
     if wait_for_kafka(KAFKA_BOOTSTRAP):
         try:
             kafka_config = {
@@ -157,8 +159,8 @@ async def startup_event():
         logger.error("✗ Skipping Kafka Producer initialization - broker unavailable")
         producer = None
 
-    # Load the AI model before marking the service ready so the first
-    # recommendation request does not block on a cold start.
+    # 2. Cargar el modelo AI en background para que la primera petición
+    #    no sufra un bloqueo de cold start en el loop principal.
     try:
         await _init_ai_background()
     except Exception as e:
@@ -167,14 +169,11 @@ async def startup_event():
 # --- HBASE CONNECTION HELPER ---
 
 def get_hbase_table(table_name='user_preferences'):
-    """Get HBase table connection with error handling.
-
-    Creates the table if it does not exist yet.
-    """
+    """Obtiene la conexión a la tabla de HBase y crea la tabla si no existe."""
     try:
         connection = happybase.Connection(
-            HBASE_HOST, 
-            port=HBASE_PORT, 
+            HBASE_HOST,
+            port=HBASE_PORT,
             timeout=5000
         )
         connection.open()
@@ -192,7 +191,7 @@ def get_hbase_table(table_name='user_preferences'):
 
 
 def load_user_preferences(user_id: str) -> Dict[str, str]:
-    """Read user preferences from HBase and fallback storage."""
+    """Lee las preferencias dietéticas del usuario desde HBase o fallback local."""
     table = get_hbase_table()
 
     if table:
@@ -206,6 +205,7 @@ def load_user_preferences(user_id: str) -> Dict[str, str]:
         except Exception as e:
             logger.warning(f"Could not fetch HBase preferences for {user_id}: {e}")
 
+    # Si HBase falla, devolvemos un fallback en memoria para mantener la funcionalidad.
     return PREFERENCES_FALLBACK_STORE.get(user_id, {})
 
 # --- PYDANTIC MODELS ---
