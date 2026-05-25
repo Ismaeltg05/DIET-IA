@@ -344,3 +344,21 @@ Contacto
 Autores: Francisco José Salmerón Puig, Ismael Torres González
 
 ---
+
+Imágenes y capturas
+--------------------
+
+Capturas y gráficos relevantes del proyecto (si no aparecen, comprueba que los archivos existen en las rutas indicadas):
+
+- NER heatmap: ![NER heatmap](docs/images/ner_heatmap.png)
+- NER model metrics: ![NER metrics](docs/images/ner_metrics.png)
+- Training history: ![Training history](docs/images/training_history.png)
+- App logo (frontend): ![App logo](docs/images/app_logo.png)
+- MongoDB — users collection (MongoDB Compass): ![MongoDB users](docs/images/mongodb_users.png)
+- MongoDB — recipes collection (`test`): ![MongoDB recipes](docs/images/mongodb_recipes.png)
+-- MongoDB — recipe ratings collection: ![MongoDB ratings](docs/images/mongodb_ratings.png)
+
+- Spark Master Web UI: ![Spark master](docs/images/park_master.png)
+- Spark Worker Web UI: ![Spark worker](docs/images/spark_worker.png)
+- HBase Web UI: ![HBase UI](docs/images/hbase.png)
+- Backend running / health (screenshot): ![Backend running](docs/images/backend_working.png)
