@@ -130,6 +130,22 @@ Node backend (Express) — base URL: `http://<host>:3000` (en Docker proxy via `
 - `POST /auth/register`, `POST /auth/login` — autenticación.
 - Nota: `Backend/src/routes/ai.js` contiene un puente (proxy) que puede reenviar a `http://localhost:8000/recommend` — mantener sincronizado con el prefijo FastAPI.
 
+Servicios desplegados (docker-compose)
+-------------------------------------
+
+A continuación se describe para qué se utiliza cada servicio definido en `docker-compose.yaml`:
+
+- `mongo`: Base de datos MongoDB. Almacena colecciones principales como `recipes`, `users` y `ratings`.
+- `zookeeper`: Servicio de coordinación requerido por Kafka y HBase (gestiona quorum y metadatos).
+- `hbase`: Almacenamiento distribuido opcional para datos en grandes volúmenes y tablas NoSQL (se usa en pipelines y análisis cuando está habilitado).
+- `kafka`: Bus de mensajería para eventos y pipelines.
+- `spark-master` y `spark-worker`: Cluster Apache Spark para procesamiento por lotes, ETL y jobs de generación de features/embeddings y análisis a gran escala.
+- `backend` (FastAPI): Servicio AI principal (Python). Indexa embeddings, realiza búsquedas semánticas y expone los endpoints `api/ai/*` (recomendación, healthcheck, indexado).
+- `backend-node` (Node/Express): API pública y backend de negocio. Gestiona autenticación, CRUD de recetas, frontend proxy y reenvía llamadas a `backend` cuando procede.
+- `nginx`: Reverse proxy y punto de entrada HTTP público. Encamina peticiones al `backend-node` y al `backend` (a través de rutas/proxy) y expone los puertos al host.
+
+Esta configuración permite separar responsabilidades: `backend` gestiona la lógica y modelos de IA, `backend-node` gestiona la API pública y autenticación, mientras que `mongo`, `kafka`, `hbase` y `spark` proporcionan almacenamiento y capacidades de procesamiento/streaming para pipelines y análisis.
+
 Datos y modelos
 ---------------
 
@@ -239,11 +255,3 @@ Contacto
 Autores: Francisco José Salmerón Puig, Ismael Torres González
 
 ---
-
-Esta versión unificada del `README.md` consolida toda la información técnica y operativa del proyecto. Si quieres, puedo:
-
-- Generar una versión pública abreviada (`README_ES.md`) para subir al repositorio raíz.
-- Añadir una plantilla de GitHub Actions para CI/Tests.
-- Crear scripts de ejemplo para indexado e integración.
-
-Indica cuál de estas tareas deseas que haga a continuación.
