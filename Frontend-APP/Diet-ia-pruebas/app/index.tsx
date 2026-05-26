@@ -66,7 +66,7 @@ export default function Home() {
   if (loading) return null;
 
   return (
-    <View className="flex-1 bg-zinc-950 dark:bg-zinc-50 justify-center items-center px-6 pb-10 safe-area-inset-b">
+    <View className="flex-1 bg-zinc-950 dark:bg-zinc-50 justify-center items-center px-6">
 
       {/* Logo */}
       <Animated.View

@@ -56,7 +56,7 @@ export default function Recipes() {
   const bodyText = 'text-zinc-400 dark:text-zinc-600';
 
   return (
-    <View className={`flex-1 ${screenSurface} p-4 pb-28 safe-area-inset-b`}>
+    <View className={`flex-1 ${screenSurface} p-4 pb-28`}>
 
       <View className={`mb-4 rounded-3xl p-5 ${cardSurface}`}>
         <Text className={`${titleText} text-2xl font-bold mb-2`}>
@@ -98,7 +98,6 @@ export default function Recipes() {
       <FlatList
         data={recipes}
         keyExtractor={(item, index) => item?._id || String(index)}
-        contentContainerStyle={{ paddingBottom: 52 }}
         renderItem={({ item }) => (
           <View className={`p-4 rounded-2xl mb-3 ${cardSurface}`}>
             <Text className={`${titleText} font-semibold`}>

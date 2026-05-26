@@ -16,4 +16,3 @@ python/.venv/
 *.pt
 # Optional: ignorar la carpeta .git/lfs object because it's local
 .git/lfs/objects/
-

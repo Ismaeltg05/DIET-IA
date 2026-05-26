@@ -134,10 +134,7 @@ export default function Profile() {
   };
 
   return (
-    <ScrollView
-      className="flex-1 bg-zinc-950 dark:bg-zinc-50 px-5 pt-12 pb-28 safe-area-inset-b"
-      contentContainerStyle={{ paddingBottom: 52 }}
-    >
+    <ScrollView className="flex-1 bg-zinc-950 dark:bg-zinc-50 px-5 pt-12 pb-28">
       {/* Header con nombre del usuario */}
       <View className="mb-4">
         <Text className="text-white dark:text-zinc-950 text-3xl font-bold mb-2">

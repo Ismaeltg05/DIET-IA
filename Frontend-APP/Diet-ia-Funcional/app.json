@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "DIET-IA",
+    "name": "Diet-IA",
     "slug": "diet-ia",
     "version": "1.0.0",
 
     "web": {
-      "favicon": "./assets/app_logo.png"
+      "favicon": "./assets/favicon.png"
     },
 
     "experiments": {

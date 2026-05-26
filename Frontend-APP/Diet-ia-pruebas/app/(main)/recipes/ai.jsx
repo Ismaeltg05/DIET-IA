@@ -275,10 +275,7 @@ export default function AIRecipes() {
   })();
 
   return (
-    <ScrollView
-      className={`flex-1 ${screenSurface} px-5 pt-12 pb-28 safe-area-inset-b`}
-      contentContainerStyle={{ paddingBottom: 52 }}
-    >
+    <ScrollView className={`flex-1 ${screenSurface} px-5 pt-12 pb-28`}>
 
       <Text className={`${titleText} text-3xl font-bold mb-2`}>
         IA Recetas 🍳
