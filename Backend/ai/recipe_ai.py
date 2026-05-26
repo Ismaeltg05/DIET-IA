@@ -1,0 +1,371 @@
+import ast
+import re
+import math
+import os
+from typing import Iterable, List, Optional, Sequence
+
+import numpy as np
+import pandas as pd
+from sentence_transformers import SentenceTransformer
+
+
+"""
+recipe_ai.py
+------------
+Implementación del motor de similitud de recetas basado en embeddings.
+
+Claves:
+- Procesa el dataset de recetas, normalizando ingredientes y pasos.
+- Construye embeddings para cada receta y permite buscar similitudes por
+    producto punto entre el vector query y la matriz de embeddings.
+- Proporciona payloads enriquecidos con heurísticas dietéticas (contiene
+    lactosa, gluten, vegetarianismo, etc.) para uso en servicios externos.
+
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
+"""
+
+
+def _to_list(value):
+    """Normaliza valores flexibles a listas.
+
+    - Si el dato ya es lista, lo devuelve tal cual.
+    - Si es string con formato de lista literal, intenta parsearlo.
+    - En cualquier otro string devuelve el valor envuelto en lista.
+    """
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.startswith("[") or stripped.startswith("("):
+            try:
+                parsed = ast.literal_eval(stripped)
+                if isinstance(parsed, list):
+                    return parsed
+            except Exception:
+                pass
+        return [value]
+    return []
+
+
+# Convenciones:
+# - Muchas funciones auxiliares aceptan `str` o `list` y devuelven estructuras
+#   estables (listas o strings limpios) para que el flujo principal trabaje
+#   con tipos previsibles.
+
+
+def _join_ingredients(value) -> str:
+    """Une ingredientes en una sola cadena limpia.
+
+    Convierte listas o strings separados por comas/pipes en un texto
+    único adecuado para generar embeddings.
+    """
+    if isinstance(value, str):
+        parts = [part.strip() for part in value.replace("|", ",").split(",") if part.strip()]
+        return " ".join(parts)
+    if isinstance(value, list):
+        return " ".join(str(item).strip() for item in value if str(item).strip())
+    return ""
+
+
+def _split_pipe_values(value) -> List[str]:
+    """Divide valores separados por pipe en una lista de strings."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    text = str(value).strip()
+    if not text or text.lower() == "nan":
+        return []
+    parts = [part.strip() for part in text.split("|") if part.strip()]
+    return parts if parts else [text]
+
+
+def _split_ingredients_text(value: str) -> List[str]:
+    """Extrae ingredientes de texto libre en una lista de elementos.
+
+    Soporta formatos con pipes, saltos de línea y cantidades expresadas en
+    medidas comunes para separar correctamente los ingredientes.
+    """
+    if value is None:
+        return []
+    text = str(value).strip()
+    if not text:
+        return []
+
+    if "|" in text:
+        return [p.strip() for p in text.split("|") if p.strip()]
+    if "\n" in text:
+        return [p.strip() for p in text.splitlines() if p.strip()]
+
+    if re.search(r"\d+\s*(cup|tablespoon|teaspoon|tbsp|tsp|ounce|oz|gram|g|kg|ml|liter|l)", text, re.IGNORECASE):
+        return [p.strip() for p in re.split(r",\s*(?=[^,])", text) if p.strip()]
+
+    return [text]
+
+
+def _split_into_steps(text: str) -> List[str]:
+    """Divide texto de instrucciones en pasos individuales."""
+    if not text:
+        return []
+    s = str(text).strip()
+
+    if "|" in s:
+        parts = [p.strip() for p in s.split("|") if p.strip()]
+        if len(parts) > 1:
+            return parts
+
+    numbered = re.split(r"\n\s*\d+[\.)]\s+", "\n" + s)
+    numbered = [p.strip() for p in numbered if p.strip()]
+    if len(numbered) > 1:
+        return numbered
+
+    if "\n" in s:
+        parts = [p.strip() for p in s.splitlines() if p.strip()]
+        if len(parts) > 1:
+            return parts
+
+    sentences = re.split(r"(?<=[.!?])\s+", s)
+    sentences = [p.strip() for p in sentences if len(p.strip()) > 10]
+    if len(sentences) > 1:
+        return sentences
+
+    return [s]
+
+
+class RecipeSimilarityAI:
+    """Modelo de similitud de recetas basado en embeddings.
+
+    Carga el dataset de recetas, prepara los embeddings y ofrece métodos
+    para recomendar la mejor receta a partir de una lista de ingredientes.
+    """
+    def __init__(
+        self,
+        base_dir: Optional[str] = None,
+        model_dir: Optional[str] = None,
+        dataset_path: Optional[str] = None,
+    ) -> None:
+        self.base_dir = base_dir or os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        self.model_dir = model_dir or os.path.join(self.base_dir, "models")
+        self.dataset_path = dataset_path or self._resolve_dataset_path()
+
+        self.embedder = self._load_embedder()
+        self.recipes = self._load_recipes()
+        self.recipe_embeddings = self._build_recipe_embeddings()
+
+
+    # ====== Carga y preprocesamiento ======
+
+    def _resolve_dataset_path(self) -> str:
+        processed_candidates = [
+            os.path.join(self.base_dir, "datasets", "RAW_recipes.csv"),
+            os.path.join(os.path.dirname(__file__), "..", "datasets", "RAW_recipes.csv"),
+        ]
+        for candidate in processed_candidates:
+            if os.path.exists(candidate):
+                return candidate
+        raise FileNotFoundError("No se encontró un dataset de recetas en datasets/RAW_recipes.csv")
+
+    def _load_embedder(self) -> SentenceTransformer:
+        embedder_candidates = [
+            os.path.join(self.model_dir, "embedder"),
+            os.path.join(self.base_dir, "models", "embedder"),
+        ]
+        for candidate in embedder_candidates:
+            if os.path.exists(candidate):
+                return SentenceTransformer(candidate)
+        return SentenceTransformer("all-MiniLM-L6-v2")
+
+    def _load_recipes(self) -> pd.DataFrame:
+        df = pd.read_csv(self.dataset_path)
+
+        # Normalizar nombres de columnas (quitar espacios y pasar a minúsculas)
+        df.columns = [str(c).strip().lower() for c in df.columns]
+        
+        # Mapeo de nombres posibles a los nombres que espera la lógica de la clase
+        rename_map = {
+            "nvmname": "Title",
+            "title": "Title",
+            "name": "Title",
+            "ingredients": "Ingredients",
+            "recipe_ingredients": "Ingredients",
+            "steps": "Instructions",
+            "directions": "Instructions",
+            "instructions": "Instructions",
+            "categories": "Category",
+            "tags": "Category"
+        }
+        
+        df = df.rename(columns=rename_map)
+
+        # Validación obligatoria
+        if "Title" not in df.columns or "Ingredients" not in df.columns:
+            found_cols = df.columns.tolist()
+            raise ValueError(
+                f"El dataset no contiene las columnas necesarias. "
+                f"Esperaba 'Title' e 'Ingredients', pero encontré: {found_cols}"
+            )
+
+        # Rellenar opcionales
+        if "Instructions" not in df.columns:
+            df["Instructions"] = ""
+        if "Category" not in df.columns:
+            df["Category"] = ""
+
+        # Guardar versiones crudas para el payload
+        df["IngredientsRaw"] = df["Ingredients"]
+        df["InstructionsRaw"] = df["Instructions"]
+        df["CategoryRaw"] = df["Category"]
+
+        # Procesamiento de datos
+        df["Title"] = df["Title"].astype(str)
+        df["Ingredients"] = df["Ingredients"].apply(_to_list).apply(_join_ingredients)
+        df["Instructions"] = df["Instructions"].apply(_to_list).apply(
+            lambda value: " | ".join(value) if isinstance(value, list) else str(value)
+        )
+
+        # Generar Features para el embedding si no existen
+        if "features" in df.columns:
+             df = df.rename(columns={"features": "Features"})
+        
+        if "Features" not in df.columns:
+            df["Features"] = df["Ingredients"]
+        else:
+            df["Features"] = df["Features"].fillna("").astype(str)
+            empty_features = df["Features"].str.strip() == ""
+            df.loc[empty_features, "Features"] = df.loc[empty_features, "Ingredients"]
+
+        # Limpiar filas vacías
+        df = df.dropna(subset=["Title", "Features"]).reset_index(drop=True)
+        df = df[df["Title"].str.strip() != ""]
+        df = df[df["Features"].str.strip() != ""]
+        
+        return df
+
+    def _build_recipe_embeddings(self) -> np.ndarray:
+        features = self.recipes["Features"].tolist()
+        embeddings = self.embedder.encode(
+            features,
+            show_progress_bar=False,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+        )
+        return np.asarray(embeddings, dtype=np.float32)
+
+    def _normalize_ingredients(self, ingredients: Sequence[str]) -> List[str]:
+        normalized = []
+        for ingredient in ingredients:
+            if not ingredient:
+                continue
+            text = str(ingredient).strip().lower()
+            if text:
+                normalized.append(text)
+        
+        unique = []
+        seen = set()
+        for item in normalized:
+            if item not in seen:
+                seen.add(item)
+                unique.append(item)
+        return unique
+
+    def _build_recipe_payload(self, row: pd.Series, score: float) -> dict:
+        recipe = row.to_dict()
+        
+        # Procesar ingredientes y pasos
+        ingredients_raw = recipe.get("IngredientsRaw", recipe.get("Ingredients", ""))
+        ingredients_list = self._normalize_ingredients(_split_ingredients_text(ingredients_raw))
+        
+        tags = _split_pipe_values(recipe.get("CategoryRaw", recipe.get("Category", "")))
+        steps = _split_into_steps(recipe.get("InstructionsRaw", recipe.get("Instructions", "")))
+
+        recipe["IngredientsList"] = ingredients_list
+        recipe["Tags"] = tags
+        recipe["SimilarityScore"] = float(score)
+        recipe["SimilarityPercent"] = round(max(0.0, float(score)) * 100.0, 2)
+        recipe["Steps"] = steps
+
+        # Heurísticas dietéticas
+        joined_ings = " ".join(ingredients_list).lower()
+        tags_lower = [t.lower() for t in tags]
+
+        dairy_keywords = ["milk", "cheese", "butter", "cream", "yogurt", "dairy"]
+        gluten_keywords = ["wheat", "bread", "flour", "pasta", "gluten", "barley", "rye"]
+        
+        recipe["contains_lactose"] = any(kw in joined_ings for kw in dairy_keywords)
+        recipe["contains_gluten"] = any(kw in joined_ings for kw in gluten_keywords)
+        recipe["is_vegetarian"] = not any(kw in joined_ings for kw in ["beef", "chicken", "fish", "meat", "pork"])
+        recipe["is_vegan"] = recipe["is_vegetarian"] and not recipe["contains_lactose"]
+
+        return recipe
+
+    def recommend_best_recipe(
+        self,
+        ingredients: List[str],
+        top_k: int = 1
+    ) -> dict | List[dict]:
+        if not ingredients:
+            raise ValueError("At least one ingredient is required")
+        
+        # Normaliza ingredientes de entrada para evitar duplicados e inconsistencias.
+        normalized = self._normalize_ingredients(ingredients)
+        if not normalized:
+            raise ValueError("No valid ingredients provided")
+
+        # Genera embedding de consulta a partir de los ingredientes normalizados.
+        query_embedding = self.embedder.encode(
+            " ".join(normalized),
+            show_progress_bar=False,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+        )
+
+        # Calcula similitud por producto punto entre consulta y recetas.
+        similarities = np.dot(self.recipe_embeddings, query_embedding)
+
+        # Obtiene los índices de las recetas con mayor similitud.
+        top_indices = np.argsort(similarities)[::-1][:max(top_k, 1)]
+
+        results = []
+        for idx in top_indices:
+            row = self.recipes.iloc[idx]
+            score = float(similarities[idx])
+            payload = self._build_recipe_payload(row, score)
+            results.append(payload)
+
+        # Devuelve un solo resultado si top_k == 1, o la lista completa.
+        if top_k == 1:
+            return results[0] if results else {}
+        else:
+            return results
+
+    def explain_match(self, recipe_title: str, ingredients: List[str]) -> dict:
+        """Explica por qué una receta coincide con los ingredientes proporcionados."""
+        normalized = self._normalize_ingredients(ingredients)
+        
+        # Busca una receta cuyo título contenga el texto solicitado.
+        matching = self.recipes[
+            self.recipes['Title'].str.lower().str.contains(recipe_title.lower(), na=False)
+        ]
+        
+        if matching.empty:
+            raise ValueError(f"Recipe '{recipe_title}' not found")
+        
+        recipe_row = matching.iloc[0]
+        recipe_ingredients_str = recipe_row.get("Ingredients", "")
+        recipe_ingredients = _split_ingredients_text(recipe_ingredients_str)
+
+        # Calcula solapamiento entre ingredientes de consulta y de la receta.
+        recipe_ing_lower = [ing.lower() for ing in recipe_ingredients]
+        matching_ingredients = [ing for ing in normalized if any(ing in r_ing for r_ing in recipe_ing_lower)]
+        
+        explanation = {
+            "recipe_title": recipe_row.get("Title"),
+            "query_ingredients": normalized,
+            "recipe_ingredients": recipe_ingredients,
+            "matching_ingredients": matching_ingredients,
+            "match_score": len(matching_ingredients) / max(len(normalized), 1),
+            "explanation": f"Matched {len(matching_ingredients)} out of {len(normalized)} query ingredients"
+        }
+        
+        return explanation
