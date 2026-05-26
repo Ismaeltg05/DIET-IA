@@ -4,7 +4,7 @@
     "slug": "diet-ia",
     "version": "1.0.0",
     "web": {
-      "favicon": "./assets/app_logo.png"
+      "favicon": "./assets/logo_fondo.png"
     },
     "experiments": {
       "tsconfigPaths": true
@@ -13,7 +13,7 @@
       "expo-router"
     ],
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo_fondo.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
@@ -28,7 +28,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/favicon.png",
         "backgroundColor": "#ffffff"
       }
     }

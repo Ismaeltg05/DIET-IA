@@ -239,8 +239,5 @@ volumes:
 
 networks:
   diet-ia:
-<<<<<<< HEAD
     driver: bridge
-=======
-    driver: bridge
->>>>>>> b7220ac9f693b1c615cd162f68116de669372194
+
