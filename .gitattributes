@@ -1,3 +1,9 @@
+# Git LFS attributes: enable LFS for large model and dataset files
+# Use Git LFS for files that exceed GitHub's size limits and that should be
+# stored as large objects (models, big CSVs). Ensure contributors have
+# `git lfs install` configured before cloning/pulling.
 datasets/RAW_recipes.csv filter=lfs diff=lfs merge=lfs -text
 *.safetensors filter=lfs diff=lfs merge=lfs -text
-*.csv filter=lfs diff=lfs merge=lfs -text
+# If you need to migrate existing files into LFS you can run:
+# git lfs migrate import --include="Backend/datasets/RAW_recipes.csv,*.safetensors" --include-ref=refs/heads/main
+Backend/datasets/RAW_recipes.csv filter=lfs diff=lfs merge=lfs -text
