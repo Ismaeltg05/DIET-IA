@@ -157,6 +157,18 @@ def main():
     # Guardar SentenceTransformer
     embedder_save_dir = os.path.join(model_dir, 'embedder')
     embedder.save(embedder_save_dir)
+    
+    # Verificar que el modelo se guardó correctamente
+    safetensors_path = os.path.join(embedder_save_dir, 'model.safetensors')
+    if os.path.exists(safetensors_path):
+        file_size = os.path.getsize(safetensors_path)
+        if file_size < 1000:  # Si es menor a 1KB, probablemente es un puntero de LFS
+            print(f"⚠️  ADVERTENCIA: El archivo model.safetensors es muy pequeño ({file_size} bytes)")
+            print("   Puede ser un puntero de Git LFS. Verifique que no esté usando Git LFS.")
+        else:
+            print(f"✅ Modelo guardado correctamente: {safetensors_path} ({file_size / 1024 / 1024:.2f} MB)")
+    else:
+        print("⚠️  ADVERTENCIA: No se encontró model.safetensors")
 
     history_df = pd.DataFrame(history)
     history_csv_path = os.path.join(model_dir, f'history_{timestamp}.csv')

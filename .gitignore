@@ -16,3 +16,13 @@ python/.venv/
 *.pt
 # Optional: ignorar la carpeta .git/lfs object because it's local
 .git/lfs/objects/
+
+# Node modules
+node_modules/
+package-lock.json
+
+# Mantener Backend/models/embedder PARA SUBIR A GITHUB
+# (Necesario para que Docker tenga acceso al modelo entrenado)
+# No ignores los archivos del modelo: 
+# !Backend/models/embedder/
+# !Backend/models/embedder/model.safetensors

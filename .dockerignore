@@ -1,0 +1,63 @@
+# .dockerignore - Archivos a excluir de la imagen Docker
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Node modules (ya instala npm en Dockerfile)
+node_modules/
+package-lock.json
+npm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentación (opcional, reduce tamaño)
+*.md
+README.md
+ENTRENAR_MODELO.md
+
+# Scripts locales
+*.sh
+*.bat
+run.sh
+run.bat
+ENTRENAR_MODELO.py
+
+# Directorios que no se necesitan en producción
+.git/
+frontend-app/
+Frontend-APP/
+colab/
+pruebas/
+dataset/
+python/
+.github/
+
+# Archivos temporales
+*.tmp
+*.log
+history*.csv
+history*.png
+
+# PERO MANTENER esto en Docker:
+# - Backend/ (todo)
+# - Backend/models/ (con modelos entrenados)
+# - Backend/datasets/ (datos)

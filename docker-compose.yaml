@@ -20,8 +20,11 @@ services:
       MONGO_URI: mongodb://mongo:27017/diet-ia
     depends_on:
       - mongo
+    # Volumen para desarrollo - mapea Backend local al contenedor
+    # En producción, comenta esta sección para usar imagen inmutable
     volumes:
-      - ./backend:/app
+      - ./Backend:/app/Backend
+      - ./Backend/models:/app/models
       - /app/node_modules
 
 volumes:

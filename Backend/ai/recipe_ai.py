@@ -99,9 +99,16 @@ class RecipeSimilarityAI:
         model_dir: Optional[str] = None,
         dataset_path: Optional[str] = None,
     ) -> None:
+        # Resolver base_dir: directorio padre de 'ai/'
+        # En Docker: /app
+        # Localmente: Backend/
         self.base_dir = base_dir or os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         self.model_dir = model_dir or os.path.join(self.base_dir, "models")
         self.dataset_path = dataset_path or self._resolve_dataset_path()
+        
+        print(f"📁 Base dir: {self.base_dir}")
+        print(f"📁 Model dir: {self.model_dir}")
+        print(f"📁 Dataset: {self.dataset_path}")
 
         self.embedder = self._load_embedder()
         self.recipes = self._load_recipes()
@@ -111,20 +118,51 @@ class RecipeSimilarityAI:
         processed_candidates = [
             os.path.join(self.base_dir, "datasets", "RAW_recipes.csv"),
             os.path.join(os.path.dirname(__file__), "..", "datasets", "RAW_recipes.csv"),
+            "/app/datasets/RAW_recipes.csv",  # Docker path
         ]
         for candidate in processed_candidates:
             if os.path.exists(candidate):
+                print(f"✅ Dataset encontrado: {candidate}")
                 return candidate
+        
+        print(f"❌ Dataset no encontrado en ninguno de estos paths:")
+        for candidate in processed_candidates:
+            print(f"   - {candidate} (existe: {os.path.exists(candidate)})")
         raise FileNotFoundError("No se encontró un dataset de recetas en datasets/RAW_recipes.csv")
 
     def _load_embedder(self) -> SentenceTransformer:
         embedder_candidates = [
             os.path.join(self.model_dir, "embedder"),
             os.path.join(self.base_dir, "models", "embedder"),
+            "/app/models/embedder",  # Docker path
         ]
+        
+        print("🔍 Buscando modelo embedder...")
         for candidate in embedder_candidates:
             if os.path.exists(candidate):
-                return SentenceTransformer(candidate)
+                print(f"   Encontrado: {candidate}")
+                # Verificar si hay model.safetensors
+                safetensors_path = os.path.join(candidate, "model.safetensors")
+                if os.path.exists(safetensors_path):
+                    file_size = os.path.getsize(safetensors_path)
+                    if file_size < 1000:  # Probablemente es puntero de LFS
+                        print(f"   ⚠️  Archivo corrupto ({file_size} bytes - puntero LFS)")
+                        print("   Usando modelo genérico...")
+                        continue
+                    print(f"   ✅ Model.safetensors válido ({file_size / 1024 / 1024:.2f} MB)")
+                
+                try:
+                    print(f"   ⏳ Cargando modelo personalizado...")
+                    model = SentenceTransformer(candidate)
+                    print(f"   ✅ Modelo personalizado cargado exitosamente")
+                    return model
+                except Exception as e:
+                    print(f"   ⚠️  Error: {e}")
+                    print("   Intentando siguiente...")
+                    continue
+        
+        print("   ℹ️  Usando modelo pre-entrenado genérico: all-MiniLM-L6-v2")
+        print("   💡 Para mejores resultados: python ENTRENAR_MODELO.py")
         return SentenceTransformer("all-MiniLM-L6-v2")
 
     def _load_recipes(self) -> pd.DataFrame:

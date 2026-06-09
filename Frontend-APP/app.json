@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "diet-ia",
+    "slug": "diet-ia",
+    "version": "1.0.0",
+    "web": {
+      "favicon": "./assets/logo_fondo.jpeg"
+    },
+    "experiments": {
+      "tsconfigPaths": true
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "orientation": "portrait",
+    "icon": "./assets/logo_fondo.jpeg",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    }
+  }
+}
