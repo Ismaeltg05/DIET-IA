@@ -3,6 +3,7 @@ __pycache__/
 *.pyo
 *.pyd
 *.egg-info/
+
 # Python virtual environments
 .venv/
 venv/
@@ -10,19 +11,26 @@ python/venv/
 python/.venv/
 **/.venv/
 **/venv/
+
+# OS files
 .DS_Store
+
+# SQLite databases (local development)
 *.sqlite
-*.h5
-*.pt
-# Optional: ignorar la carpeta .git/lfs object because it's local
-.git/lfs/objects/
+*.db
+
+# ============================================
+# IMPORTANT: Model and Dataset Files
+# ============================================
+# These files ARE tracked by Git LFS (.gitattributes)
+# DO NOT ignore them - they are needed for the application to work
+# 
+# If you add large model/dataset files:
+# 1. Update .gitattributes with the appropriate LFS pattern
+# 2. Ensure Git LFS is installed: git lfs install
+# 3. Files will be automatically tracked by LFS
 
 # Node modules
 node_modules/
 package-lock.json
 
-# Mantener Backend/models/embedder PARA SUBIR A GITHUB
-# (Necesario para que Docker tenga acceso al modelo entrenado)
-# No ignores los archivos del modelo: 
-# !Backend/models/embedder/
-# !Backend/models/embedder/model.safetensors

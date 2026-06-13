@@ -34,6 +34,8 @@ pipeline_tag: sentence-similarity
 
 
 # all-MiniLM-L6-v2
+Autor: Ismael Torres González y Francisco J. Salmerón Puig
+Comentador: Ismael Torres González y Francisco J. Salmerón Puig
 This is a [sentence-transformers](https://www.SBERT.net) model: It maps sentences & paragraphs to a 384 dimensional dense vector space and can be used for tasks like clustering or semantic search.
 
 ## Usage (Sentence-Transformers)
