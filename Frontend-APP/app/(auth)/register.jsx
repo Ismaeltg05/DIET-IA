@@ -3,10 +3,12 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { registerUser } from '../../services/auth';
+import { useTranslations } from '../../hooks/useTranslations';
 import '../../global.css';
 
 export default function Register() {
   const router = useRouter();
+  const t = useTranslations();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -17,19 +19,19 @@ export default function Register() {
     try {
       await registerUser(name, email, password, phone);
 
-      Alert.alert('Éxito', 'Usuario creado');
+      Alert.alert(t.register.success, 'Usuario creado');
 
       router.push('/(auth)/login');
 
     } catch (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert(t.register.error, error.message);
     }
   };
 
   return (
     <View className="flex-1 justify-center items-center p-4 bg-zinc-950">
       <Text className="text-2xl font-semibold mb-6 text-white">
-        Registrarse
+        {t.register.title}
       </Text>
 
       <TextInput
@@ -41,7 +43,7 @@ export default function Register() {
       />
 
       <TextInput
-        placeholder="Correo electrónico"
+        placeholder={t.register.email}
         placeholderTextColor="#71717a"
         value={email}
         onChangeText={setEmail}
@@ -57,7 +59,7 @@ export default function Register() {
       />
 
       <TextInput
-        placeholder="Contraseña"
+        placeholder={t.register.password}
         placeholderTextColor="#71717a"
         secureTextEntry
         value={password}
@@ -70,7 +72,7 @@ export default function Register() {
         className="bg-indigo-600 rounded-full px-6 py-3"
       >
         <Text className="text-white font-semibold">
-          Registrarse
+          {t.register.registerBtn}
         </Text>
       </Pressable>
     </View>

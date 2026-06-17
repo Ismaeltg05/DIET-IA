@@ -7,12 +7,16 @@ import { Text, View, Pressable, Image, Animated, Dimensions } from 'react-native
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLanguage } from '../context/LanguageContext';
+import { useTranslations } from '../hooks/useTranslations';
 
 import '../global.css';
 
 export default function Home() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const { language, changeLanguage } = useLanguage();
+  const t = useTranslations();
 
   // Calcula el tamaño del logo en función del ancho de la pantalla,
   // de modo que la imagen se vea correctamente en dispositivos móviles.
@@ -93,7 +97,7 @@ export default function Home() {
       <View className="w-full max-w-sm bg-zinc-900 dark:bg-zinc-100 rounded-3xl p-6">
 
         <Text className="text-white dark:text-zinc-950 text-xl font-semibold text-center mb-6">
-          Accede a tu cuenta
+          {t.home.title}
         </Text>
 
         <Pressable
@@ -101,7 +105,7 @@ export default function Home() {
           className="bg-indigo-500 py-4 rounded-2xl mb-4 active:opacity-80"
         >
           <Text className="text-white text-center font-semibold">
-            Iniciar sesión
+            {t.home.loginBtn}
           </Text>
         </Pressable>
 
@@ -110,18 +114,43 @@ export default function Home() {
           className="bg-zinc-800 py-4 rounded-2xl mb-4 active:opacity-80"
         >
           <Text className="text-white text-center font-semibold">
-            Crear cuenta
+            {t.home.registerBtn}
           </Text>
         </Pressable>
 
         <Pressable
           onPress={() => router.push('/recipes')}
-          className="bg-green-600 py-4 rounded-2xl active:opacity-80"
+          className="bg-green-600 py-4 rounded-2xl mb-6 active:opacity-80"
         >
           <Text className="text-white text-center font-semibold">
-            Continuar sin cuenta
+            {t.home.continueBtn}
           </Text>
         </Pressable>
+
+        {/* Selector de idioma */}
+        <View className="flex-row gap-3">
+          <Pressable
+            onPress={() => changeLanguage('es')}
+            className={`flex-1 py-3 rounded-lg ${
+              language === 'es' ? 'bg-indigo-600' : 'bg-zinc-800'
+            } active:opacity-80`}
+          >
+            <Text className="text-white text-center font-semibold">
+              Español
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => changeLanguage('en')}
+            className={`flex-1 py-3 rounded-lg ${
+              language === 'en' ? 'bg-indigo-600' : 'bg-zinc-800'
+            } active:opacity-80`}
+          >
+            <Text className="text-white text-center font-semibold">
+              English
+            </Text>
+          </Pressable>
+        </View>
 
       </View>
 

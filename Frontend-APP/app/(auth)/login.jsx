@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { loginUser } from '../../services/auth';
+import { useTranslations } from '../../hooks/useTranslations';
 import '../../global.css';
 
 const validarEmail = (email) => {
@@ -12,13 +13,14 @@ const validarEmail = (email) => {
 
 export default function Login() {
   const router = useRouter();
+  const t = useTranslations();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
     if (!validarEmail(email)) {
-      Alert.alert('Error', 'Por favor, introduce un email válido');
+      Alert.alert(t.login.error, t.login.errorEmail);
       return;
     }
 
@@ -27,23 +29,23 @@ export default function Login() {
 
       console.log('Login correcto:', data);
 
-      Alert.alert('Éxito', `ID usuario: ${data.userId}`);
+      Alert.alert(t.login.success, t.login.successMessage.replace('{userId}', data.userId));
 
       router.push('/');
 
     } catch (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert(t.login.error, error.message);
     }
   };
 
   return (
     <View className="flex-1 justify-center items-center p-4 bg-zinc-950">
       <Text className="text-2xl font-semibold mb-6 text-white">
-        Iniciar sesión
+        {t.login.title}
       </Text>
 
       <TextInput
-        placeholder="Correo electrónico"
+        placeholder={t.login.email}
         placeholderTextColor="#71717a"
         value={email}
         onChangeText={setEmail}
@@ -51,7 +53,7 @@ export default function Login() {
       />
 
       <TextInput
-        placeholder="Contraseña"
+        placeholder={t.login.password}
         placeholderTextColor="#71717a"
         secureTextEntry
         value={password}
@@ -64,7 +66,7 @@ export default function Login() {
         className="bg-indigo-600 rounded-full px-6 py-3"
       >
         <Text className="text-white font-semibold">
-          Entrar
+          {t.login.loginBtn}
         </Text>
       </Pressable>
 
@@ -73,7 +75,7 @@ export default function Login() {
         className="mt-4"
       >
         <Text className="text-indigo-400">
-          ¿No tienes cuenta? Regístrate
+          {t.login.noAccount}
         </Text>
       </Pressable>
     </View>

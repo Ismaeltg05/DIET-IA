@@ -17,6 +17,7 @@ import '../../global.css';
 import ThemeToggle from '../../components/ThemeToggle';
 import { useRouter } from 'expo-router';
 import { getUserId, logout } from '../../services/auth';
+import { useTranslations } from '../../hooks/useTranslations';
 
 const toBool = (value) => {
   if (typeof value === 'boolean') return value;
@@ -37,25 +38,26 @@ export default function Profile() {
   const [favoriteRecipes, setFavoriteRecipes] = useState([]);
   const [ratedRecipes, setRatedRecipes] = useState([]);
   const router = useRouter();
+  const t = useTranslations();
 
   const preferenceOptions = [
     {
       key: 'lactose_intolerant',
-      label: 'Sin lactosa',
+      label: t.profile.lactoseFree,
       icon: '🥛',
-      disabledLabel: 'Sin restricción'
+      disabledLabel: t.profile.lactoseFreeDisabled
     },
     {
       key: 'vegan',
-      label: 'Vegano',
+      label: t.profile.vegan,
       icon: '🥦',
-      disabledLabel: 'Sin preferencia vegana'
+      disabledLabel: t.profile.veganDisabled
     },
     {
       key: 'gluten_free',
-      label: 'Sin gluten',
+      label: t.profile.glutenFree,
       icon: '🌾',
-      disabledLabel: 'Sin restricción de gluten'
+      disabledLabel: t.profile.glutenFreeDisabled
     }
   ];
 
@@ -130,7 +132,7 @@ export default function Profile() {
       {/* Preferencias del usuario */}
       <View className="bg-zinc-900 dark:bg-zinc-100 rounded-2xl p-4 mb-6">
         <Text className="text-white dark:text-zinc-950 font-semibold mb-4 text-lg">
-          Preferencias dietéticas
+          {t.profile.preferences}
         </Text>
 
         {preferenceOptions.map((option) => {
@@ -180,7 +182,7 @@ export default function Profile() {
       {/* Mis recetas favoritas */}
       <View className="bg-zinc-900 dark:bg-zinc-100 rounded-2xl p-4 mb-6">
         <Text className="text-white dark:text-zinc-950 font-semibold mb-4 text-lg">
-          ❤️ Mis recetas favoritas
+          ❤️ {t.profile.favoriteRecipes}
         </Text>
 
         {favoriteRecipes.length === 0 ? (
@@ -209,7 +211,7 @@ export default function Profile() {
       {/* Recetas que califiqué */}
       <View className="bg-zinc-900 dark:bg-zinc-100 rounded-2xl p-4 mb-20">
         <Text className="text-white dark:text-zinc-950 font-semibold mb-4 text-lg">
-          ⭐ Recetas que califiqué
+          ⭐ {t.profile.ratedRecipes}
         </Text>
 
         {ratedRecipes.length === 0 ? (
@@ -241,7 +243,7 @@ export default function Profile() {
         onPress={handleLogout}
         className="bg-red-600 py-3 rounded-xl mt-4 mb-10"
       >
-        <Text className="text-white text-center font-semibold">Cerrar sesión</Text>
+        <Text className="text-white text-center font-semibold">{t.profile.logout}</Text>
       </Pressable>
     </ScrollView>
   );
